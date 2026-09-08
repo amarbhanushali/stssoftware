@@ -86,7 +86,7 @@ npm run enquiries
 
 This command prints personal data; use it only on an authorised machine. There is intentionally no unauthenticated web endpoint for listing enquiries.
 
-Copy `.env.example` to `.env` and fill in `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` and `NOTIFY_EMAIL` to enable notification emails. Restart the Node server after changing settings. Without SMTP, requests are still saved with notification status `unconfigured`. A failed send is marked `failed` and remains visible in the local enquiry listing; automatic email retry is not included.
+Copy `.env.example` to `.env` and fill in `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` and `NOTIFY_EMAIL` to enable notification emails. Every accepted enquiry sends one detailed email to `NOTIFY_EMAIL` and one automatic acknowledgement email to the visitor. Use `AUTO_REPLY_EMAIL_SUBJECT` to change its subject; the default message includes the enquiry reference. Restart the Node server after changing settings. Without SMTP, requests are still saved with notification status `unconfigured`. A failed send is marked `failed` and remains visible in the local enquiry listing; automatic email retry is not included.
 
 ## WhatsApp notifications and automatic reply
 

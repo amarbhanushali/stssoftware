@@ -144,6 +144,16 @@ async function notify(record) {
         subject: `STS website enquiry ${record.id}`,
         text: `Reference: ${record.id}\nName: ${record.name}\nEmail: ${record.email}\nCompany: ${record.company}\nPhone: ${record.phone}\nService: ${record.service}\nTimeline: ${record.timeline}\n\n${record.message}`,
       });
+      await transport.sendMail({
+        from: process.env.MAIL_FROM,
+        to: record.email,
+        subject:
+          process.env.AUTO_REPLY_EMAIL_SUBJECT ||
+          "We received your enquiry | Samarth Tech Software",
+        text:
+          process.env.AUTO_REPLY_EMAIL_TEXT ||
+          `Hello ${record.name},\n\nThank you for contacting Samarth Tech Software. We have received your enquiry (reference: ${record.id}) and will review it shortly.\n\nRegards,\nSamarth Tech Software`,
+      });
       db.prepare("UPDATE enquiries SET notification_status=? WHERE id=?").run(
         "sent",
         record.id,
