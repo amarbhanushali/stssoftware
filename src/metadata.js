@@ -114,3 +114,46 @@ export function getMetadata(pathname) {
     }
   );
 }
+
+export function getStructuredData(pathname, origin) {
+  const normalizedPath = pathname.replace(/\/$/, "") || "/";
+  const metadata = getMetadata(normalizedPath);
+  const pageUrl = `${origin}${normalizedPath}`;
+  const graph = [
+    {
+      "@type": "Organization",
+      "@id": `${origin}/#organization`,
+      name: "Samarth Tech Software",
+      url: origin,
+      logo: `${origin}/sts-logo.png`,
+      description: baseDescription,
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${origin}/#website`,
+      url: origin,
+      name: "Samarth Tech Software",
+      publisher: { "@id": `${origin}/#organization` },
+    },
+    {
+      "@type": "WebPage",
+      "@id": `${pageUrl}#webpage`,
+      url: pageUrl,
+      name: metadata.title,
+      description: metadata.description,
+      isPartOf: { "@id": `${origin}/#website` },
+      about: { "@id": `${origin}/#organization` },
+    },
+  ];
+  const service = services.find((item) => normalizedPath === `/services/${item.slug}`);
+  if (service) {
+    graph.push({
+      "@type": "Service",
+      name: service.name,
+      description: service.description,
+      provider: { "@id": `${origin}/#organization` },
+      url: pageUrl,
+    });
+  }
+  return { "@context": "https://schema.org", "@graph": graph };
+}

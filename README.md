@@ -99,6 +99,12 @@ Then set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_RECIPIEN
 
 Set `PUBLIC_ORIGIN` to the final origin, without a trailing slash, for canonical URLs and the sitemap. In production use HTTPS, `NODE_ENV=production`, a persistent `DATA_DIR`, and a process manager. If a reverse proxy is used, configure trusted proxy handling specifically for that deployment rather than trusting arbitrary forwarded headers.
 
+## Google SEO and lead setup
+
+The production site serves crawlable HTML, unique page titles and descriptions, canonical URLs, a sitemap, robots instructions, Open Graph sharing tags and Organization/WebSite/WebPage/Service structured data. Set `PUBLIC_ORIGIN=https://stssoftware.in`, deploy, then submit `https://stssoftware.in/sitemap.xml` in [Google Search Console](https://search.google.com/search-console/about). For HTML-tag verification, copy only the `content` value from Google's verification tag into Hostinger as `GOOGLE_SITE_VERIFICATION`, then redeploy. Do not submit `/api/` URLs for indexing.
+
+Search ranking also needs useful content and external trust. Publish real, location- and customer-specific service evidence only after it is approved: project outcomes, client permissions, accurate business contact details and answers to actual customer questions. Keep the consultation call to action on every service page and review form enquiries weekly to see which services and pages generate leads.
+
 ## Content editing
 
 - `src/data.js`: services, solution examples, process stages and editorial guides.

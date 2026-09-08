@@ -13,7 +13,7 @@ import {
 import { mkdirSync, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { pages, getMetadata } from "../src/metadata.js";
+import { pages, getMetadata, getStructuredData } from "../src/metadata.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = process.env.DATA_DIR || path.join(root, "server", "data");
@@ -394,16 +394,22 @@ if (existsSync(path.join(dist, "index.html"))) {
         /<meta name="description" content="[^"]*"\s*\/?\s*>/,
         `<meta name="description" content="${escape(metadata.description)}"/>`,
       );
-    if (process.env.PUBLIC_ORIGIN && found)
-      html = html.replace(
-        "</head>",
-        `<link rel="canonical" href="${escape(process.env.PUBLIC_ORIGIN + pathname)}"/></head>`,
+    const origin = process.env.PUBLIC_ORIGIN?.replace(/\/$/, "");
+    const head = [];
+    if (origin && found) {
+      const pageUrl = `${origin}${pathname}`;
+      const imageUrl = `${origin}/sts-whatsapp-app-icon.png`;
+      const structuredData = JSON.stringify(getStructuredData(pathname, origin)).replace(
+        /</g,
+        "\\u003c",
       );
-    if (!found)
-      html = html.replace(
-        "</head>",
-        '<meta name="robots" content="noindex"/></head>',
-      );
+      head.push(`<link rel="canonical" href="${escape(pageUrl)}"/>`);
+      head.push(`<meta property="og:type" content="website"/><meta property="og:site_name" content="Samarth Tech Software"/><meta property="og:title" content="${title}"/><meta property="og:description" content="${escape(metadata.description)}"/><meta property="og:url" content="${escape(pageUrl)}"/><meta property="og:image" content="${escape(imageUrl)}"/><meta name="twitter:card" content="summary"/><meta name="twitter:title" content="${title}"/><meta name="twitter:description" content="${escape(metadata.description)}"/><meta name="twitter:image" content="${escape(imageUrl)}"/><script type="application/ld+json">${structuredData}</script>`);
+      if (process.env.GOOGLE_SITE_VERIFICATION)
+        head.push(`<meta name="google-site-verification" content="${escape(process.env.GOOGLE_SITE_VERIFICATION)}"/>`);
+    }
+    if (!found) head.push('<meta name="robots" content="noindex"/>');
+    html = html.replace("</head>", `${head.join("")}</head>`);
     res
       .status(found ? 200 : 404)
       .type("html")
