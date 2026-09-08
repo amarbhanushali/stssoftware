@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+server/data/
+server/rendered/
+tests/artifacts/
+*.log
+output/
+stitch_samarth_tech_corporate_website/
+stitch_samarth_tech_corporate_website.zip
+aK8uQBTCkC06Y_2OWYj4SM.png
+exec-*.png
