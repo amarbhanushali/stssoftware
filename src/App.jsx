@@ -1703,9 +1703,22 @@ function AnalyticsConsent() {
   const measurementId = typeof document === "undefined" ? "" : document.querySelector('meta[name="google-analytics-id"]')?.content || "";
   useEffect(() => setConsent(window.localStorage.getItem("sts_analytics_consent")), []);
   useEffect(() => {
+    if (!measurementId || window.stsConsentModeSet) return;
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function gtag() { window.dataLayer.push(arguments); };
+    window.gtag("consent", "default", {
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+      analytics_storage: "denied",
+    });
+    window.stsConsentModeSet = true;
+  }, [measurementId]);
+  useEffect(() => {
     if (consent !== "accepted" || !measurementId) return;
     window.dataLayer = window.dataLayer || [];
     window.gtag = window.gtag || function gtag() { window.dataLayer.push(arguments); };
+    window.gtag("consent", "update", { analytics_storage: "granted" });
     if (!document.getElementById("google-analytics-script")) {
       window.gtag("js", new Date());
       window.gtag("config", measurementId, { send_page_view: false });

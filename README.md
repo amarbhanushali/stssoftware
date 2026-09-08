@@ -107,7 +107,7 @@ Search ranking also needs useful content and external trust. Publish real, locat
 
 ## Visitor tracking
 
-Create a Google Analytics 4 web data stream for the final site and add its Measurement ID (format `G-...`) in Hostinger as `GOOGLE_ANALYTICS_ID`. After redeploying, the site asks visitors to accept optional analytics before loading Google Analytics. Accepted visitors' page views, including React client-side navigation, appear in GA4. Do not add the Google Analytics script separately in Hostinger or the page source; the application manages it after consent.
+Create a Google Analytics 4 web data stream for the final site and add its Measurement ID (format `G-...`) in Hostinger as `GOOGLE_ANALYTICS_ID`. After redeploying, the site asks visitors to accept optional analytics before loading Google Analytics. Google Consent Mode defaults all Google storage to denied; accepting the banner grants only analytics storage, while advertising storage and personalisation remain denied. Accepted visitors' page views, including React client-side navigation, appear in GA4. Do not add the Google Analytics script separately in Hostinger or the page source; the application manages it after consent.
 
 ## Content editing
 
