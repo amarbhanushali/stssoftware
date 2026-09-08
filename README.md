@@ -105,6 +105,10 @@ The production site serves crawlable HTML, unique page titles and descriptions, 
 
 Search ranking also needs useful content and external trust. Publish real, location- and customer-specific service evidence only after it is approved: project outcomes, client permissions, accurate business contact details and answers to actual customer questions. Keep the consultation call to action on every service page and review form enquiries weekly to see which services and pages generate leads.
 
+## Visitor tracking
+
+Create a Google Analytics 4 web data stream for the final site and add its Measurement ID (format `G-...`) in Hostinger as `GOOGLE_ANALYTICS_ID`. After redeploying, the site asks visitors to accept optional analytics before loading Google Analytics. Accepted visitors' page views, including React client-side navigation, appear in GA4. Do not add the Google Analytics script separately in Hostinger or the page source; the application manages it after consent.
+
 ## Content editing
 
 - `src/data.js`: services, solution examples, process stages and editorial guides.

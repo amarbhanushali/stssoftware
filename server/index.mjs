@@ -42,11 +42,11 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
+        scriptSrc: ["'self'", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.googletagmanager.com"] : [])],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:"],
         fontSrc: ["'self'"],
-        connectSrc: ["'self'"],
+        connectSrc: ["'self'", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.google-analytics.com", "https://region1.google-analytics.com"] : [])],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
@@ -407,6 +407,8 @@ if (existsSync(path.join(dist, "index.html"))) {
       head.push(`<meta property="og:type" content="website"/><meta property="og:site_name" content="Samarth Tech Software"/><meta property="og:title" content="${title}"/><meta property="og:description" content="${escape(metadata.description)}"/><meta property="og:url" content="${escape(pageUrl)}"/><meta property="og:image" content="${escape(imageUrl)}"/><meta name="twitter:card" content="summary"/><meta name="twitter:title" content="${title}"/><meta name="twitter:description" content="${escape(metadata.description)}"/><meta name="twitter:image" content="${escape(imageUrl)}"/><script type="application/ld+json">${structuredData}</script>`);
       if (process.env.GOOGLE_SITE_VERIFICATION)
         head.push(`<meta name="google-site-verification" content="${escape(process.env.GOOGLE_SITE_VERIFICATION)}"/>`);
+      if (/^G-[A-Z0-9]+$/i.test(process.env.GOOGLE_ANALYTICS_ID || ""))
+        head.push(`<meta name="google-analytics-id" content="${escape(process.env.GOOGLE_ANALYTICS_ID)}"/>`);
     }
     if (!found) head.push('<meta name="robots" content="noindex"/>');
     html = html.replace("</head>", `${head.join("")}</head>`);

@@ -1610,8 +1610,11 @@ function Policy({ terms = false }) {
               </p>
               <h2>Analytics and external services</h2>
               <p>
-                This website does not include advertising trackers or session
-                replay. Website assets and fonts are served locally.
+                With your consent, this website uses Google Analytics to measure
+                aggregate page visits and navigation. It does not use advertising
+                trackers or session replay. You can decline analytics without
+                affecting the website or enquiry form. Website assets and fonts
+                are served locally.
               </p>
               <h2>Questions about your information</h2>
               <p>
@@ -1694,6 +1697,30 @@ function PageState() {
   }, [pathname]);
   return null;
 }
+function AnalyticsConsent() {
+  const location = useLocation();
+  const [consent, setConsent] = useState(null);
+  const measurementId = typeof document === "undefined" ? "" : document.querySelector('meta[name="google-analytics-id"]')?.content || "";
+  useEffect(() => setConsent(window.localStorage.getItem("sts_analytics_consent")), []);
+  useEffect(() => {
+    if (consent !== "accepted" || !measurementId) return;
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function gtag() { window.dataLayer.push(arguments); };
+    if (!document.getElementById("google-analytics-script")) {
+      window.gtag("js", new Date());
+      window.gtag("config", measurementId, { send_page_view: false });
+      const script = document.createElement("script");
+      script.id = "google-analytics-script";
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
+      document.head.appendChild(script);
+    }
+    window.gtag("event", "page_view", { page_location: window.location.href, page_path: location.pathname, page_title: document.title });
+  }, [consent, measurementId, location.pathname]);
+  const decide = (value) => { window.localStorage.setItem("sts_analytics_consent", value); setConsent(value); };
+  if (!measurementId || consent !== null) return null;
+  return <aside className="analytics-consent" aria-label="Analytics cookie choice"><p>We use optional Google Analytics to understand website visits and improve our services. It does not affect your enquiry.</p><div><button type="button" className="text-button" onClick={() => decide("denied")}>No thanks</button><button type="button" className="button" onClick={() => decide("accepted")}>Accept analytics</button></div></aside>;
+}
 export default function App() {
   return (
     <>
@@ -1701,6 +1728,7 @@ export default function App() {
         Skip to content
       </a>
       <PageState />
+      <AnalyticsConsent />
       <Header />
       <main id="main-content">
         <Routes>
