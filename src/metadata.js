@@ -121,12 +121,21 @@ export function getStructuredData(pathname, origin) {
   const pageUrl = `${origin}${normalizedPath}`;
   const graph = [
     {
-      "@type": "Organization",
+      "@type": ["ProfessionalService", "Organization"],
       "@id": `${origin}/#organization`,
       name: "Samarth Tech Software",
       url: origin,
       logo: `${origin}/sts-logo.png`,
       description: baseDescription,
+      address: {
+        "@type": "PostalAddress",
+        streetAddress:
+          "16 Shukhakarta Row Houses, Ganpati Temple, Shivajinagar Dharmaji Colony, Ashok Nagar",
+        addressLocality: "Nashik",
+        addressRegion: "Maharashtra",
+        postalCode: "422012",
+        addressCountry: "IN",
+      },
     },
     {
       "@type": "WebSite",

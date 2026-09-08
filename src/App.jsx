@@ -1363,6 +1363,12 @@ function Consultation() {
                 records and other confidential data out of this form.
               </p>
             </div>
+            <div className="privacy-note">
+              <Icon name="globe" />
+              <p>
+                Based in Nashik, Maharashtra. <a href="https://www.google.com/maps/search/?api=1&query=16+Shukhakarta+Row+Houses%2C+Ganpati+Temple%2C+Shivajinagar+Dharmaji+Colony%2C+Ashok+Nagar%2C+Nashik+422012" target="_blank" rel="noopener noreferrer">View our address on Google Maps</a>.
+              </p>
+            </div>
           </aside>
           <div className="form-card">
             {status === "success" ? (
