@@ -22,7 +22,7 @@ npm run dev
 
 Open the Vite URL printed in the terminal (normally http://localhost:5173). Vite forwards `/api` to the backend on port 3001. Stop an existing `npm start` process before starting `npm run dev`.
 
-Although the project is inside XAMPP's `htdocs`, Apache does not execute this React/Node application. The root `.htaccess` prevents Apache from serving source code and private data. Use the Node URL above. For deployment, place a reverse proxy in front of the Node server, or deploy to a host that runs Node processes.
+Although the project is inside XAMPP's `htdocs`, Apache does not execute this React/Node application. Use the Node URL above. For deployment, place a reverse proxy in front of the Node server, or deploy to a host that runs Node processes. Hostinger Node.js Web App hosting creates its own routing configuration, so this repository does not include an Apache `.htaccess` file.
 
 ## Live server deployment
 
