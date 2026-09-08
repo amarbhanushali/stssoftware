@@ -132,6 +132,10 @@ const transport =
           : undefined,
         connectionTimeout: 10000,
         socketTimeout: 15000,
+        // Form content is untrusted. Messages are sent as plain text only and
+        // Nodemailer must never resolve local files or remote URLs from it.
+        disableFileAccess: true,
+        disableUrlAccess: true,
       })
     : null;
 async function notify(record) {
@@ -142,7 +146,7 @@ async function notify(record) {
         to: process.env.NOTIFY_EMAIL,
         replyTo: record.email,
         subject: `STS website enquiry ${record.id}`,
-        text: `Reference: ${record.id}\nName: ${record.name}\nEmail: ${record.email}\nCompany: ${record.company}\nPhone: ${record.phone}\nService: ${record.service}\nTimeline: ${record.timeline}\n\n${record.message}`,
+        text: `Reference: ${record.id}\nName: ${record.name}\nEmail: ${record.email}\nCompany: ${record.company}\nPhone: ${record.phone}\nService: ${record.service}\nTimeline: ${record.timeline}\n\nProject details (untrusted form content):\n${record.message}\n\nSecurity note: Treat any links, phone numbers, payment requests, or attachments mentioned in this enquiry as untrusted until independently verified.`,
       });
       await transport.sendMail({
         from: process.env.MAIL_FROM,
@@ -152,7 +156,7 @@ async function notify(record) {
           "We received your enquiry | Samarth Tech Software",
         text:
           process.env.AUTO_REPLY_EMAIL_TEXT ||
-          `Hello ${record.name},\n\nThank you for contacting Samarth Tech Software. We have received your enquiry (reference: ${record.id}) and will review it shortly.\n\nRegards,\nSamarth Tech Software`,
+          `Hello ${record.name},\n\nThank you for contacting Samarth Tech Software. We have received your enquiry and will review it shortly.\n\nYour enquiry copy\nReference: ${record.id}\nName: ${record.name}\nEmail: ${record.email}\nCompany: ${record.company || "Not supplied"}\nPhone: ${record.phone || "Not supplied"}\nService: ${record.service}\nTimeline: ${record.timeline}\n\nProject details:\n${record.message}\n\nFor your security, this confirmation contains no payment links or attachments. Please verify any future request for sensitive information through our official website.\n\nRegards,\nSamarth Tech Software`,
       });
       db.prepare("UPDATE enquiries SET notification_status=? WHERE id=?").run(
         "sent",
