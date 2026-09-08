@@ -26,6 +26,14 @@ db.exec(`CREATE TABLE IF NOT EXISTS enquiries (
  phone TEXT, service TEXT NOT NULL, timeline TEXT, message TEXT NOT NULL,
  privacy_accepted INTEGER NOT NULL, notification_status TEXT NOT NULL DEFAULT 'unconfigured'
 )`);
+// Keeps existing live databases compatible when this feature is deployed.
+try {
+  db.exec(
+    "ALTER TABLE enquiries ADD COLUMN whatsapp_opt_in INTEGER NOT NULL DEFAULT 0",
+  );
+} catch (error) {
+  if (!String(error.message).includes("duplicate column name")) throw error;
+}
 const secret = randomBytes(32);
 const app = express();
 app.disable("x-powered-by");
@@ -127,27 +135,97 @@ const transport =
       })
     : null;
 async function notify(record) {
-  if (!transport) return;
+  if (transport) {
+    try {
+      await transport.sendMail({
+        from: process.env.MAIL_FROM,
+        to: process.env.NOTIFY_EMAIL,
+        replyTo: record.email,
+        subject: `STS website enquiry ${record.id}`,
+        text: `Reference: ${record.id}\nName: ${record.name}\nEmail: ${record.email}\nCompany: ${record.company}\nPhone: ${record.phone}\nService: ${record.service}\nTimeline: ${record.timeline}\n\n${record.message}`,
+      });
+      db.prepare("UPDATE enquiries SET notification_status=? WHERE id=?").run(
+        "sent",
+        record.id,
+      );
+    } catch {
+      db.prepare("UPDATE enquiries SET notification_status=? WHERE id=?").run(
+        "failed",
+        record.id,
+      );
+      console.error(
+        `Email notification failed for ${record.id}; enquiry remains saved.`,
+      );
+    }
+  }
+  await notifyWhatsApp(record);
+}
+
+function whatsappNumber(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (!digits) return null;
+  // Indian local mobile numbers entered without a country code are supported.
+  return digits.length === 10 ? `91${digits}` : digits.length >= 8 ? digits : null;
+}
+
+async function sendWhatsAppTemplate(to, template, parameters) {
+  if (!process.env.WHATSAPP_ACCESS_TOKEN || !process.env.WHATSAPP_PHONE_NUMBER_ID)
+    return false;
+  const response = await fetch(
+    `https://graph.facebook.com/${process.env.WHATSAPP_GRAPH_VERSION || "v24.0"}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to,
+        type: "template",
+        template: {
+          name: template,
+          language: { code: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "en_US" },
+          components: [
+            {
+              type: "body",
+              parameters: parameters.map((text) => ({ type: "text", text })),
+            },
+          ],
+        },
+      }),
+    },
+  );
+  if (!response.ok) throw new Error(`WhatsApp API returned ${response.status}`);
+  return true;
+}
+
+async function notifyWhatsApp(record) {
   try {
-    await transport.sendMail({
-      from: process.env.MAIL_FROM,
-      to: process.env.NOTIFY_EMAIL,
-      replyTo: record.email,
-      subject: `STS website enquiry ${record.id}`,
-      text: `Reference: ${record.id}\nName: ${record.name}\nEmail: ${record.email}\nCompany: ${record.company}\nPhone: ${record.phone}\nService: ${record.service}\nTimeline: ${record.timeline}\n\n${record.message}`,
-    });
-    db.prepare("UPDATE enquiries SET notification_status=? WHERE id=?").run(
-      "sent",
-      record.id,
-    );
+    const jobs = [];
+    const team = whatsappNumber(process.env.WHATSAPP_RECIPIENT_NUMBER);
+    if (team && process.env.WHATSAPP_TEAM_TEMPLATE) {
+      jobs.push(
+        sendWhatsAppTemplate(team, process.env.WHATSAPP_TEAM_TEMPLATE, [
+          record.name,
+          record.phone || "Not supplied",
+          record.email,
+          record.service,
+          record.message,
+        ]),
+      );
+    }
+    const visitor = whatsappNumber(record.phone);
+    if (visitor && record.whatsappOptIn && process.env.WHATSAPP_WELCOME_TEMPLATE) {
+      jobs.push(
+        sendWhatsAppTemplate(visitor, process.env.WHATSAPP_WELCOME_TEMPLATE, [
+          record.name,
+        ]),
+      );
+    }
+    await Promise.all(jobs);
   } catch {
-    db.prepare("UPDATE enquiries SET notification_status=? WHERE id=?").run(
-      "failed",
-      record.id,
-    );
-    console.error(
-      `Email notification failed for ${record.id}; enquiry remains saved.`,
-    );
+    console.error(`WhatsApp notification failed for ${record.id}; enquiry remains saved.`);
   }
 }
 app.post("/api/enquiries", limiter, async (req, res) => {
@@ -213,9 +291,10 @@ app.post("/api/enquiries", limiter, async (req, res) => {
     return res.json({ reference: existing.id });
   }
   record.id = `STS-${randomUUID().slice(0, 8).toUpperCase()}`;
+  record.whatsappOptIn = b.whatsapp === "accepted";
   try {
     db.prepare(
-      "INSERT INTO enquiries (id,created_at,idempotency_key,payload_hash,name,email,company,phone,service,timeline,message,privacy_accepted,notification_status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO enquiries (id,created_at,idempotency_key,payload_hash,name,email,company,phone,service,timeline,message,privacy_accepted,notification_status,whatsapp_opt_in) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     ).run(
       record.id,
       new Date().toISOString(),
@@ -230,6 +309,7 @@ app.post("/api/enquiries", limiter, async (req, res) => {
       record.message,
       1,
       transport ? "pending" : "unconfigured",
+      record.whatsappOptIn ? 1 : 0,
     );
     res.status(201).json({ reference: record.id });
     void notify(record);

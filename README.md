@@ -88,6 +88,15 @@ This command prints personal data; use it only on an authorised machine. There i
 
 Copy `.env.example` to `.env` and fill in `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` and `NOTIFY_EMAIL` to enable notification emails. Restart the Node server after changing settings. Without SMTP, requests are still saved with notification status `unconfigured`. A failed send is marked `failed` and remains visible in the local enquiry listing; automatic email retry is not included.
 
+## WhatsApp notifications and automatic reply
+
+The contact form includes an optional WhatsApp consent checkbox. When it is selected, the server can send an approved WhatsApp Business template to the visitor; it can also send each enquiry to the company's WhatsApp number. This requires a Meta WhatsApp Business Platform account and approved templates. In WhatsApp Manager, create templates with these exact body variables:
+
+- `sts_new_enquiry`: `{{1}}` name, `{{2}}` phone, `{{3}}` email, `{{4}}` service, `{{5}}` message.
+- `sts_welcome`: `{{1}}` name. Suggested body: `Hello {{1}}, thank you for contacting Samarth Tech Software. We have received your enquiry and will reply shortly.`
+
+Then set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_RECIPIENT_NUMBER` (your own WhatsApp number with country code, for example `919876543210`), `WHATSAPP_TEAM_TEMPLATE=sts_new_enquiry`, and `WHATSAPP_WELCOME_TEMPLATE=sts_welcome` in Hostinger Environment Variables. Redeploy after saving. Keep the access token private. The application uses templates because a website enquiry does not itself open a WhatsApp customer-service conversation.
+
 Set `PUBLIC_ORIGIN` to the final origin, without a trailing slash, for canonical URLs and the sitemap. In production use HTTPS, `NODE_ENV=production`, a persistent `DATA_DIR`, and a process manager. If a reverse proxy is used, configure trusted proxy handling specifically for that deployment rather than trusting arbitrary forwarded headers.
 
 ## Content editing

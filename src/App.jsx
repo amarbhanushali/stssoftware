@@ -1502,6 +1502,13 @@ function Consultation() {
                       enquiry. *
                     </span>
                   </label>
+                  <label className="checkbox-label">
+                    <input type="checkbox" name="whatsapp" value="accepted" />
+                    <span>
+                      Send me a WhatsApp confirmation and follow-up about this
+                      enquiry.
+                    </span>
+                  </label>
                   {error && (
                     <div className="form-error" role="alert">
                       {error}
