@@ -109,6 +109,8 @@ Search ranking also needs useful content and external trust. Publish real, locat
 
 Create a Google Analytics 4 web data stream for the final site and add its Measurement ID (format `G-...`) in Hostinger as `GOOGLE_ANALYTICS_ID`. After redeploying, the Google tag loads with Consent Mode set to deny all storage, allowing tag diagnostics without setting analytics cookies. Accepting the banner grants only analytics storage, while advertising storage and personalisation remain denied. Accepted visitors' page views, including React client-side navigation, appear in GA4. Do not add the Google Analytics script separately in Hostinger or the page source; the application manages it after consent.
 
+When a visitor who accepted analytics submits the consultation form, the website sends the GA4 recommended `generate_lead` event with the selected service and timeline only. It never sends names, email addresses, phone numbers or project descriptions to Google Analytics. Mark `generate_lead` as a key event in GA4 to measure enquiry conversions.
+
 ## Content editing
 
 - `src/data.js`: services, solution examples, process stages and editorial guides.

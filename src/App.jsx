@@ -1305,6 +1305,11 @@ function Consultation() {
       }
       setReceipt(data.reference);
       setStatus("success");
+      if (window.gtag && window.localStorage.getItem("sts_analytics_consent") === "accepted")
+        window.gtag("event", "generate_lead", {
+          service: values.service,
+          timeline: values.timeline,
+        });
       formRef.current?.reset();
     } catch (err) {
       setError(
