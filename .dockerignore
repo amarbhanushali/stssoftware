@@ -1,0 +1,19 @@
+.git
+.github
+node_modules
+dist
+server/rendered
+server/data
+tests
+output
+stitch_samarth_tech_corporate_website
+stitch_samarth_tech_corporate_website.zip
+.env
+*.log
+Banner.png
+Banner2.png
+Facebook Banner.png
+Video
+logo-youtube.png
+watermark.png
+public/logo.svg

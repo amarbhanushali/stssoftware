@@ -24,6 +24,43 @@ Open the Vite URL printed in the terminal (normally http://localhost:5173). Vite
 
 Although the project is inside XAMPP's `htdocs`, Apache does not execute this React/Node application. The root `.htaccess` prevents Apache from serving source code and private data. Use the Node URL above. For deployment, place a reverse proxy in front of the Node server, or deploy to a host that runs Node processes.
 
+## Live server deployment
+
+This application is not suitable for static-only hosting because the contact form saves enquiries and pages are server-rendered. Deploy it to a server that can run Node.js 24 or Docker.
+
+### Docker deployment
+
+On the live server, clone the GitHub repository, create a production `.env` from `.env.example`, set the real domain in `PUBLIC_ORIGIN`, and set `HOST=0.0.0.0`. Add SMTP settings if enquiries should send notification emails.
+
+```bash
+git clone https://github.com/amarbhanushali/stssoftware.git
+cd stssoftware
+cp .env.example .env
+docker build -t stssoftware:latest .
+docker run -d --name stssoftware --restart unless-stopped \
+  --env-file .env \
+  -p 127.0.0.1:3001:3001 \
+  -v stssoftware-data:/data \
+  stssoftware:latest
+```
+
+The Docker volume keeps contact enquiries when the container is replaced. Back it up before upgrades. Do not expose port `3001` directly to the internet; use HTTPS reverse proxying. Copy `deploy/Caddyfile.example` to the server, replace `your-domain.com` with the real domain, and use Caddy or an equivalent Nginx configuration to proxy HTTPS requests to `127.0.0.1:3001`.
+
+For each release:
+
+```bash
+git pull --ff-only
+docker build -t stssoftware:latest .
+docker stop stssoftware && docker rm stssoftware
+docker run -d --name stssoftware --restart unless-stopped \
+  --env-file .env \
+  -p 127.0.0.1:3001:3001 \
+  -v stssoftware-data:/data \
+  stssoftware:latest
+```
+
+Test the server locally before deploying with `npm run build`, `npm test`, and `npm start`. The production build outputs `dist/` for browser assets and `server/rendered/` for server-rendered React. They are generated at build time and intentionally excluded from Git.
+
 ## What is implemented
 
 - Responsive homepage and shared navigation/footer based on the supplied designs.
