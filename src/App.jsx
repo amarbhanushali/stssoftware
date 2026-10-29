@@ -8,7 +8,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { services, stages, projects, articles } from "./data.js";
+import { services, stages, projects, articles, faqs } from "./data.js";
 import { getMetadata } from "./metadata.js";
 
 const paths = {
@@ -139,15 +139,27 @@ function Footer() {
     <footer>
       <div className="container footer-grid">
         <div>
-          <Link to="/" className="footer-brand">
-            Samarth<span>Tech</span>
-            <small>SOFTWARE</small>
+          <Link
+            to="/"
+            className="footer-brand"
+            aria-label="Samarth Tech Software home"
+          >
+            <img
+              src="/sts-logo.png"
+              alt="Samarth Tech Software"
+              width="600"
+              height="400"
+            />
           </Link>
           <p>
-            Practical software. Connected systems.
-            <br />
-            Built around your business.
+            Websites, apps and business software from Nashik, built around
+            the way you work.
           </p>
+          <address className="footer-address">
+            Ashok Nagar, Nashik 422012
+            <br />
+            Maharashtra, India
+          </address>
           <Link className="footer-contact" to="/contact">
             Let’s talk about your project <Icon />
           </Link>
@@ -178,8 +190,8 @@ function Footer() {
         <div>
           <h3>Start a conversation</h3>
           <p>
-            Have a workflow to improve or a product to build? Tell us what you
-            have in mind.
+            Have something you’d like to build or fix? Send us a few lines and
+            we’ll take it from there.
           </p>
           <Button>Discuss Your Project</Button>
         </div>
@@ -228,9 +240,12 @@ function CTA() {
     <section className="cta">
       <div className="container cta-inner">
         <div>
-          <span className="eyebrow">LET’S BUILD SOMETHING USEFUL</span>
-          <h2>Have a business challenge in mind?</h2>
-          <p>Tell us where you are today and what you want to make possible.</p>
+          <span className="eyebrow">LET’S TALK</span>
+          <h2>Got a problem you’d like software to solve?</h2>
+          <p>
+            Tell us what is going on in a few lines. We will read it properly
+            and reply with honest next steps.
+          </p>
         </div>
         <Button>Discuss Your Project</Button>
       </div>
@@ -347,16 +362,17 @@ function Home() {
           <div>
             <span className="eyebrow badge">
               <span className="status-dot" />
-              BUSINESS-FOCUSED ENGINEERING
+              SOFTWARE COMPANY IN NASHIK
             </span>
             <h1>
-              Custom Software and Practical <span>AI Automation</span> for Your
-              Business
+              Websites, Custom Software and <span>AI Automation</span> for
+              Growing Businesses
             </h1>
             <p className="lead">
-              From business websites and web applications to custom systems and
-              practical AI workflows, Samarth Tech Software helps you turn
-              business requirements into reliable digital solutions.
+              We are a software team in Nashik building websites, business
+              software, mobile apps and AI tools. Tell us what is slowing your
+              business down, and we will build something simple that fixes it,
+              then stay around after launch.
             </p>
             <div className="hero-actions">
               <Button />
@@ -366,10 +382,10 @@ function Home() {
             </div>
             <div className="trust-row">
               {[
-                "Clear milestones",
-                "Connected systems",
-                "Practical automation",
-                "Ongoing support",
+                "Plain-English updates",
+                "Milestones you approve",
+                "Your code, your data",
+                "Support after launch",
               ].map((t) => (
                 <span key={t}>
                   <Icon name="check" />
@@ -384,28 +400,28 @@ function Home() {
       <section className="section white">
         <div className="container">
           <SectionHeading
-            eyebrow="LESS FRICTION. MORE FOCUS."
-            title="Solving real operational bottlenecks"
-            description="Technology should make your work simpler. Start with the challenges slowing your business down."
+            eyebrow="SOUND FAMILIAR?"
+            title="The everyday problems we help fix"
+            description="Good software starts with a real problem, not a feature list."
           />
           <div className="grid three">
             {[
               [
                 "layers",
-                "Disconnected tools & spreadsheets",
-                "Bring information and teams into one coherent business workflow.",
+                "Too many Excel sheets and WhatsApp groups",
+                "Information is scattered, copies don’t match and evenings go on reconciling them. We bring it all into one system.",
                 "custom-software",
               ],
               [
                 "spark",
-                "Repetitive manual work",
-                "Connect practical automation to the tasks that take up your team’s time.",
+                "Hours lost to typing and copying",
+                "Retyping orders, invoices and enquiries is slow and error-prone. Let automation do the typing while your team checks.",
                 "ai-automation",
               ],
               [
                 "code",
-                "Systems that hold you back",
-                "Modernise the experience, connect your tools and make room to grow.",
+                "Old software that holds you back",
+                "Slow screens, no mobile access and nothing talks to anything else. We modernise or connect it without starting from scratch.",
                 "web-applications",
               ],
             ].map(([icon, title, copy, slug]) => (
@@ -418,7 +434,7 @@ function Home() {
                 <h3>{title}</h3>
                 <p>{copy}</p>
                 <span className="text-link">
-                  Find a solution <Icon />
+                  See how we help <Icon />
                 </span>
               </Link>
             ))}
@@ -429,9 +445,9 @@ function Home() {
         <div className="container">
           <div className="heading-row">
             <SectionHeading
-              eyebrow="OUR CAPABILITIES"
-              title="Engineering services built for your business"
-              description="From your first website to the systems behind your operations."
+              eyebrow="WHAT WE DO"
+              title="Websites, software and apps, built in Nashik"
+              description="From your first website to the systems that run your day-to-day operations."
             />
             <Link className="text-link" to="/services">
               All services <Icon />
@@ -447,9 +463,9 @@ function Home() {
       <section className="section white">
         <div className="container">
           <SectionHeading
-            eyebrow="A CLEAR PATH FROM IDEA TO DELIVERY"
-            title="Six stages. Shared understanding."
-            description="Know what happens next, what you will review and what each stage delivers."
+            eyebrow="HOW A PROJECT RUNS"
+            title="No jargon, no surprises"
+            description="You always know what happens next, what we need from you and what you get at each step."
           />
           <div className="process-strip">
             {stages.map(([title], i) => (
@@ -470,9 +486,9 @@ function Home() {
       <section className="section">
         <div className="container">
           <SectionHeading
-            eyebrow="THE TOOLS BEHIND THE WORK"
-            title="A practical technology stack"
-            description="Selected for your requirements, the people maintaining the system and the life of your product."
+            eyebrow="THE TOOLS WE USE"
+            title="Proven technology, chosen for the long run"
+            description="We pick tools that suit your project and that other developers can maintain later. No lock-in."
           />
           <div className="grid four">
             {[
@@ -530,14 +546,14 @@ function Services() {
     <>
       <Hero
         eyebrow="Services"
-        title="Engineering services designed for business impact"
-        description="Build the right solution for your operational stage, from a focused first release to a connected business platform."
+        title="Software, website and app development in Nashik"
+        description="Whether you need your first website or a system to run the whole business, we start with what you need now and leave room to grow."
       />
       <section className="section">
         <div className="container">
           <SectionHeading
-            eyebrow="OUR CAPABILITIES"
-            title="Comprehensive service offerings"
+            eyebrow="ALL SERVICES"
+            title="Pick a starting point"
           />
           <Filters
             options={[
@@ -560,22 +576,22 @@ function Services() {
       <section className="section white">
         <div className="container">
           <SectionHeading
-            eyebrow="RIGHT-SIZED DELIVERY"
-            title="Built for your next stage"
+            eyebrow="WHO WE WORK WITH"
+            title="Sized to fit your business"
           />
           <div className="grid three">
             {[
               [
                 "Startups",
-                "Define the essential first release and get a useful product into the hands of your users.",
+                "Get a working first version in front of real users quickly, then improve it with their feedback.",
               ],
               [
                 "Small & medium businesses",
-                "Replace disconnected workflows with tools that make day-to-day operations easier.",
+                "Replace scattered sheets and manual follow-ups with tools that make the working day easier.",
               ],
               [
                 "Manufacturing & retail",
-                "Connect orders, inventory and reporting to give your teams a clearer operational view.",
+                "Connect orders, stock and reporting so you can see what is happening without chasing people.",
               ],
             ].map(([t, p]) => (
               <div className="card" key={t}>
@@ -605,31 +621,17 @@ function FAQ({ items }) {
     </div>
   );
 }
-const commonFAQ = [
-  [
-    "How is the project price decided?",
-    "We first review your requirements, integrations, priorities and constraints. The proposal then describes the scope, delivery milestones and commercial terms.",
-  ],
-  [
-    "How long will development take?",
-    "The timeline depends on the size of the release, required integrations and the availability of decisions and content. We agree a plan after scoping rather than promising a date before understanding the work.",
-  ],
-  [
-    "Can you work with our existing system?",
-    "Yes, we can start with a review of your current application and integrations. The discovery stage identifies what can be retained, improved or replaced.",
-  ],
-  [
-    "What happens after launch?",
-    "We discuss maintenance, updates and support needs during project planning. The agreed support scope and response terms form part of the engagement.",
-  ],
-];
 function ServiceDetail() {
   const { slug } = useParams();
   const s = services.find((s) => s.slug === slug);
   if (!s) return <NotFound />;
   return (
     <>
-      <Hero eyebrow={s.name} title={s.short} description={s.description}>
+      <Hero
+        eyebrow={s.name}
+        title={`${s.name} in Nashik`}
+        description={s.description}
+      >
         <div className="hero-actions">
           <Button to={`/consultation?service=${s.slug}`}>
             Discuss This Service
@@ -642,28 +644,25 @@ function ServiceDetail() {
       <section className="section">
         <div className="container detail-layout">
           <div>
-            <SectionHeading eyebrow="WHAT WE DELIVER" title={s.name} />
+            <SectionHeading eyebrow="WHAT YOU GET" title={s.short} />
             <div className="grid two">
-              {s.deliverables.map((t, i) => (
+              {s.deliverables.map(([t, detail], i) => (
                 <article className="card deliverable" key={t}>
                   <span className="step-small">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <h3>{t}</h3>
-                  <p>
-                    Defined around your requirements and reviewed as part of the
-                    agreed project milestones.
-                  </p>
+                  <p>{detail}</p>
                 </article>
               ))}
             </div>
           </div>
           <aside className="sidebar-card">
             <Icon name={s.icon} />
-            <h3>A clear starting point</h3>
+            <h3>Not sure where to start?</h3>
             <p>
-              Share the process you want to improve, your existing tools and
-              your priorities.
+              Tell us what you want to improve and which tools you use today.
+              We’ll suggest a sensible first step.
             </p>
             <div className="tags">
               {s.stack.map((t) => (
@@ -681,8 +680,8 @@ function ServiceDetail() {
       </section>
       <section className="section white">
         <div className="container narrow">
-          <SectionHeading eyebrow="BEFORE WE BEGIN" title="Common questions" />
-          <FAQ items={commonFAQ} />
+          <SectionHeading eyebrow="GOOD QUESTIONS" title="Questions you might have" />
+          <FAQ items={faqs} />
         </div>
       </section>
       <CTA />
@@ -694,8 +693,8 @@ function Process() {
     <>
       <Hero
         eyebrow="Our Process"
-        title="A clear engineering process, from discovery to support"
-        description="Six stages keep the work visible and give your team meaningful decisions at the right time."
+        title="How we work, from the first call to long after launch"
+        description="Six simple stages. At each one you know what we are doing, what we need from you and what you get."
       />
       <section className="section">
         <div className="container stages">
@@ -724,24 +723,24 @@ function Process() {
       <section className="section white">
         <div className="container">
           <SectionHeading
-            eyebrow="WAYS TO WORK TOGETHER"
-            title="An engagement model that fits the work"
+            eyebrow="TWO WAYS TO WORK WITH US"
+            title="Choose what suits your project"
           />
           <div className="grid two">
             <article className="card">
-              <h3>Defined scope and milestones</h3>
+              <h3>Fixed scope and milestones</h3>
               <p>
-                Useful when the first release can be clearly specified. Agree
-                deliverables, review points and change handling before the
-                build.
+                Best when you know what the first version needs to do. We agree
+                the deliverables, review points and how changes are handled
+                before we start.
               </p>
             </article>
             <article className="card">
-              <h3>Iterative product development</h3>
+              <h3>Build and improve as you go</h3>
               <p>
-                Useful when the roadmap evolves with feedback. Prioritise a
-                backlog together and review working features at agreed
-                intervals.
+                Best when your idea will change once users try it. We keep a
+                shared priority list and review working features together at
+                regular intervals.
               </p>
             </article>
           </div>
@@ -777,14 +776,14 @@ function Technology() {
     <>
       <Hero
         eyebrow="Technology"
-        title="The right tools for a maintainable system"
-        description="We start with your requirements, data and operational needs. Technology choices should serve the product and the team that will maintain it."
+        title="The technology behind our work"
+        description="We choose tools based on your requirements and on who will maintain the system later, not on what is fashionable this year."
       />
       <section className="section">
         <div className="container">
           <SectionHeading
-            eyebrow="TECHNOLOGY BY DOMAIN"
-            title="A connected engineering toolkit"
+            eyebrow="WHAT WE BUILD WITH"
+            title="Reliable, well-supported tools"
           />
           <div className="grid three">
             {[
@@ -792,37 +791,37 @@ function Technology() {
                 "code",
                 "Backend & APIs",
                 "Laravel, Python and Node.js",
-                "Business logic, integrations and reliable application services.",
+                "The behind-the-scenes logic, integrations and data processing.",
               ],
               [
                 "layout",
                 "Frontend & experience",
                 "React, HTML, CSS and JavaScript",
-                "Responsive, understandable interfaces for the work your users need to do.",
+                "Clean, fast screens that work on phones and desktops alike.",
               ],
               [
                 "database",
                 "Data & reporting",
                 "PostgreSQL, MySQL and SQLite",
-                "Structured information with clear ownership, access and reporting.",
+                "Well-organised data with backups, access control and reports.",
               ],
               [
                 "phone",
                 "Mobile applications",
                 "React Native and Flutter",
-                "Mobile experiences designed for the device and working environment.",
+                "One codebase for both Android and iOS apps.",
               ],
               [
                 "shield",
                 "Deployment & operations",
                 "Source control, automation and monitoring",
-                "Repeatable releases and practical tools to maintain your application.",
+                "Safe, repeatable releases and monitoring once you are live.",
               ],
               [
                 "spark",
                 "AI & automation",
                 "Python, LLM APIs and workflow tools",
-                "Bounded automation with evaluation, review and escalation paths.",
+                "AI that helps with specific tasks, with a person checking the results.",
               ],
             ].map(([icon, t, stack, p]) => (
               <article className="card" key={t}>
@@ -840,9 +839,9 @@ function Technology() {
       <section className="section white">
         <div className="container">
           <SectionHeading
-            eyebrow="EXPLORE A STARTING POINT"
-            title="Example stacks by solution"
-            description="These are starting points for a discussion, rather than fixed requirements for every project."
+            eyebrow="EXAMPLE SET-UPS"
+            title="What a typical project might use"
+            description="Every project is different. These are starting points for a conversation, not fixed rules."
           />
           <div
             role="tablist"
@@ -888,8 +887,8 @@ function Technology() {
               <span className="eyebrow">SOLUTION BLUEPRINT</span>
               <h2>{selected}</h2>
               <p>
-                Each layer has a clear responsibility and a defined connection
-                to the next.
+                Each layer has one clear job, which keeps the system easier to
+                fix and extend.
               </p>
               <Button to="/consultation">Discuss Your Architecture</Button>
             </div>
@@ -914,8 +913,8 @@ function About() {
     <>
       <Hero
         eyebrow="About STS"
-        title="Practical software engineering. Shared understanding."
-        description="Samarth Tech Software builds digital solutions around the way businesses work, bringing planning, design, development and support into one delivery process."
+        title="A Nashik software company that starts by listening"
+        description="Samarth Tech Software builds websites, apps and business software around the way your business already works, and stays with you from planning to support."
       />
       <section className="section white">
         <div className="container about-grid">
@@ -927,17 +926,16 @@ function About() {
               Then build the software.
             </h2>
             <p>
-              Every project starts with people: the team doing the work, the
-              customers using the service and the decisions the business needs
-              to make.
+              Every project starts with people: the staff doing the work, the
+              customers you serve and the decisions you make every day.
             </p>
             <p>
-              We translate those needs into clear requirements and useful
-              software. Our aim is a system your team understands, can operate
-              and can keep improving.
+              We turn that into clear requirements and software your team can
+              understand, run and keep improving, without needing us for every
+              small change.
             </p>
             <Button to="/process" outline>
-              Meet Our Process
+              See How We Work
             </Button>
           </div>
           <div className="about-mark">
@@ -954,30 +952,30 @@ function About() {
       <section className="section">
         <div className="container">
           <SectionHeading
-            eyebrow="HOW WE WORK"
-            title="Clear principles. Practical decisions."
+            eyebrow="WHAT WE BELIEVE"
+            title="A few things we don’t compromise on"
           />
           <div className="grid two">
             {[
               [
                 "01",
-                "Business value before features",
-                "Start with an operational problem and define what a useful outcome looks like.",
+                "Solve the problem, not the feature list",
+                "We start with what is going wrong in your business and agree what ‘better’ looks like.",
               ],
               [
                 "02",
-                "Visible, staged delivery",
-                "Review progress at clear milestones and make scope decisions together.",
+                "No black boxes",
+                "You see working progress at every milestone and decide on scope changes with us.",
               ],
               [
                 "03",
-                "Maintainable foundations",
-                "Choose understandable architecture and provide the documentation needed for handover.",
+                "Built to last",
+                "Well-known technology and proper documentation, so your system is never stuck with one developer.",
               ],
               [
                 "04",
-                "Security and usability in the plan",
-                "Consider permissions, sensitive data, error recovery and accessible interaction during design.",
+                "Safe and easy to use",
+                "Permissions, data protection and clear error messages are planned from day one, not added later.",
               ],
             ].map(([n, t, p]) => (
               <article className="card" key={n}>
@@ -1002,8 +1000,8 @@ function Work() {
     <>
       <Hero
         eyebrow="Our Work"
-        title="Explore what a connected business system can look like"
-        description="Illustrative solution examples show how we approach common operational challenges. These are concepts, not published client case studies or measured customer results."
+        title="Examples of problems we can solve"
+        description="Illustrative examples based on common business problems, showing how we would approach them. They are not client case studies or measured results."
       />
       <section className="section">
         <div className="container">
@@ -1081,11 +1079,11 @@ function WorkDetail() {
       />
       <section className="section">
         <div className="container narrow">
-          <h2>The operational challenge</h2>
+          <h2>The problem</h2>
           <p className="lead">{p.challenge}</p>
-          <h2>A possible approach</h2>
+          <h2>How we would solve it</h2>
           <p>{p.solution}</p>
-          <h2>Core capabilities</h2>
+          <h2>What it would include</h2>
           <ul className="check-list">
             {p.features.map((f) => (
               <li key={f}>
@@ -1094,12 +1092,12 @@ function WorkDetail() {
               </li>
             ))}
           </ul>
-          <h2>How we would evaluate it</h2>
+          <h2>How we would know it works</h2>
           <p>
-            During discovery, agree a baseline and acceptance criteria with the
-            team doing the work. Compare the completed workflow with that
-            baseline, including time spent, error handling and the effort
-            required to maintain the system.
+            Before building, we would agree a starting point with the team doing
+            the work: how long the task takes today and how often mistakes
+            happen. After launch, we compare against that, including the effort
+            needed to keep the system running.
           </p>
           <div className="tags">
             {p.stack.map((t) => (
@@ -1129,8 +1127,8 @@ function Insights() {
     <>
       <Hero
         eyebrow="Insights"
-        title="Useful thinking for your next digital project"
-        description="Practical guides to scoping, software workflows and responsible automation. Written to help you ask better questions before you build."
+        title="Practical guides for business owners"
+        description="Plain-English advice on planning websites, software and AI automation, written to help you ask better questions before you spend money."
       />
       <section className="section">
         <div className="container">
@@ -1219,7 +1217,7 @@ function Article() {
       <Hero eyebrow={a.category} title={a.title} description={a.intro}>
         <div className="article-byline">
           <Icon name="clock" />
-          {a.minutes} min read <span>·</span> STS Editorial
+          {a.minutes} min read <span>·</span> Samarth Tech Software team
         </div>
       </Hero>
       <section className="section white">
@@ -1231,7 +1229,7 @@ function Article() {
             </section>
           ))}
           <div className="article-end">
-            <p>Planning a related project?</p>
+            <p>Thinking about something similar for your business?</p>
             <Button>Talk Through Your Requirements</Button>
           </div>
           <Link className="text-link" to="/insights">
@@ -1323,29 +1321,29 @@ function Consultation() {
     <>
       <Hero
         eyebrow="Contact & Consultation"
-        title="Let’s understand what you want to build"
-        description="Tell us about your business, the problem you are solving and where you want to go next."
+        title="Tell us what you’d like to build"
+        description="A few lines about your business and the problem you want to solve is enough. We read every enquiry and reply by email."
       />
       <section className="section">
         <div className="container consultation-grid">
           <aside>
             <span className="eyebrow">WHAT HAPPENS NEXT</span>
-            <h2>A conversation with a clear purpose.</h2>
+            <h2>Simple, and no pressure.</h2>
             {[
               [
                 "01",
-                "We review your requirements",
-                "We look at your goals, current tools and the kind of help you need.",
+                "We read your message properly",
+                "We look at your goals, the tools you use today and the kind of help you need.",
               ],
               [
                 "02",
-                "We clarify the right approach",
-                "We discuss scope, constraints, integrations and the most useful starting point.",
+                "We talk it through",
+                "A short call to understand the details, what needs to connect to what and the best place to start.",
               ],
               [
                 "03",
-                "We outline the next steps",
-                "We agree whether discovery or a project proposal is the right next move.",
+                "You get honest next steps",
+                "A clear proposal, a suggestion to start smaller, or an honest answer if we are not the right fit.",
               ],
             ].map(([n, t, p]) => (
               <div className="next-step" key={n}>
@@ -1548,10 +1546,10 @@ function Consultation() {
       <section className="section white">
         <div className="container narrow">
           <SectionHeading
-            eyebrow="A LITTLE MORE CLARITY"
+            eyebrow="QUICK ANSWERS"
             title="Before you get in touch"
           />
-          <FAQ items={commonFAQ} />
+          <FAQ items={faqs} />
         </div>
       </section>
     </>

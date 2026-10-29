@@ -1,7 +1,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -168,4 +168,52 @@ test("serves a sitemap and security headers", async () => {
   const xml = await (await fetch(base + "/sitemap.xml")).text();
   assert.match(xml, /<urlset/);
   assert.match(xml, /services\/ai-automation/);
+});
+
+test("welcomes search and AI crawlers", async () => {
+  const robots = await (await fetch(base + "/robots.txt")).text();
+  assert.match(robots, /User-agent: GPTBot\nAllow: \//);
+  assert.match(robots, /User-agent: ClaudeBot\nAllow: \//);
+  assert.match(robots, /Disallow: \/api\//);
+  assert.match(robots, /Sitemap: http:\/\/localhost:3001\/sitemap\.xml/);
+  const llms = await fetch(base + "/llms.txt");
+  assert.equal(llms.status, 200);
+  const text = await llms.text();
+  assert.match(text, /^# Samarth Tech Software/);
+  assert.match(text, /\/services\/ai-automation/);
+  assert.doesNotMatch(text, /enquir.*@/i);
+});
+
+test("emits structured data for local search", async () => {
+  const html = await (await fetch(base + "/services/wordpress")).text();
+  assert.match(html, /<title>[^<]*in Nashik[^<]*<\/title>/);
+  const json = JSON.parse(
+    html.match(/<script type="application\/ld\+json">(.*?)<\/script>/)[1],
+  );
+  const types = json["@graph"].flatMap((node) => node["@type"]);
+  for (const type of ["Organization", "BreadcrumbList", "Service", "FAQPage"])
+    assert.ok(types.includes(type), type);
+});
+
+test("rejects scanner probes and sets hardening headers", async () => {
+  for (const probe of ["/wp-login.php", "/.env", "/.git/config", "/admin.php"]) {
+    const r = await fetch(base + probe);
+    assert.equal(r.status, 404, probe);
+    assert.doesNotMatch(await r.text(), /<html/);
+  }
+  const r = await fetch(base + "/");
+  assert.match(r.headers.get("permissions-policy"), /camera=\(\)/);
+  assert.match(r.headers.get("content-security-policy"), /frame-ancestors 'none'/);
+  assert.doesNotMatch(r.headers.get("content-security-policy"), /unsafe-inline/);
+  const api = await fetch(base + "/api/health");
+  assert.equal(api.headers.get("x-robots-tag"), "noindex, nofollow");
+});
+
+test("every published service can be selected in an enquiry", async () => {
+  const { services } = await import("../src/data.js");
+  const source = readFileSync("server/index.mjs", "utf8");
+  const allowList = source.match(/allowedServices = new Set\(\[([\s\S]*?)\]\)/)[1];
+  for (const { slug } of services) assert.match(allowList, new RegExp(`"${slug}"`), slug);
+  const html = await (await fetch(base + "/services/php-security")).text();
+  assert.match(html, /<title>PHP Security &amp; Server Hardening in Nashik/);
 });

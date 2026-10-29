@@ -97,11 +97,13 @@ The contact form includes an optional WhatsApp consent checkbox. When it is sele
 
 Then set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_RECIPIENT_NUMBER` (your own WhatsApp number with country code, for example `919876543210`), `WHATSAPP_TEAM_TEMPLATE=sts_new_enquiry`, and `WHATSAPP_WELCOME_TEMPLATE=sts_welcome` in Hostinger Environment Variables. Redeploy after saving. Keep the access token private. The application uses templates because a website enquiry does not itself open a WhatsApp customer-service conversation.
 
-Set `PUBLIC_ORIGIN` to the final origin, without a trailing slash, for canonical URLs and the sitemap. In production use HTTPS, `NODE_ENV=production`, a persistent `DATA_DIR`, and a process manager. If a reverse proxy is used, configure trusted proxy handling specifically for that deployment rather than trusting arbitrary forwarded headers.
+Set `PUBLIC_ORIGIN` to the final origin, without a trailing slash, for canonical URLs and the sitemap. In production use HTTPS, `NODE_ENV=production`, a persistent `DATA_DIR`, and a process manager. Behind a reverse proxy (Caddy, Nginx, Hostinger) set `TRUST_PROXY=1` (the number of proxy hops); without it every visitor shares the proxy's IP address and one rate limit.
 
 ## Google SEO and lead setup
 
 The production site serves crawlable HTML, unique page titles and descriptions, canonical URLs, a sitemap, robots instructions, Open Graph sharing tags and Organization/WebSite/WebPage/Service structured data. Set `PUBLIC_ORIGIN=https://stssoftware.in`, deploy, then submit `https://stssoftware.in/sitemap.xml` in [Google Search Console](https://search.google.com/search-console/about). For HTML-tag verification, copy only the `content` value from Google's verification tag into Hostinger as `GOOGLE_SITE_VERIFICATION`, then redeploy. Do not submit `/api/` URLs for indexing.
+
+Service pages are titled "… in Nashik" and the structured data includes the Nashik address, served area, BreadcrumbList, FAQPage (where the FAQ is shown) and BlogPosting for guides. For AI assistants and answer engines, `robots.txt` explicitly allows Googlebot, Bingbot, GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot and similar crawlers, and `/llms.txt` serves a plain-language summary of the company, services and guides generated from `src/data.js`. Also verify the site in Bing Webmaster Tools (it feeds ChatGPT and Copilot search) and create a Google Business Profile with exactly the same name and address.
 
 Search ranking also needs useful content and external trust. Publish real, location- and customer-specific service evidence only after it is approved: project outcomes, client permissions, accurate business contact details and answers to actual customer questions. Keep the consultation call to action on every service page and review form enquiries weekly to see which services and pages generate leads.
 

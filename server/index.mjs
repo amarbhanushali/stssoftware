@@ -13,7 +13,12 @@ import {
 import { mkdirSync, existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { pages, getMetadata, getStructuredData } from "../src/metadata.js";
+import {
+  pages,
+  getMetadata,
+  getStructuredData,
+  getLlmsText,
+} from "../src/metadata.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = process.env.DATA_DIR || path.join(root, "server", "data");
@@ -37,30 +42,62 @@ try {
 const secret = randomBytes(32);
 const app = express();
 app.disable("x-powered-by");
+// Behind Caddy/Nginx/Hostinger every request arrives from the proxy, so the
+// rate limiter would treat all visitors as one client. Set TRUST_PROXY to the
+// number of proxy hops in front of Node (normally 1). Never use "true".
+const trustProxy = Number(process.env.TRUST_PROXY || 0);
+if (Number.isInteger(trustProxy) && trustProxy > 0)
+  app.set("trust proxy", trustProxy);
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.googletagmanager.com"] : [])],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:"],
+        styleSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.googletagmanager.com"] : [])],
         fontSrc: ["'self'"],
         connectSrc: ["'self'", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.google-analytics.com", "https://region1.google-analytics.com"] : [])],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
+        frameAncestors: ["'none'"],
         upgradeInsecureRequests:
           process.env.NODE_ENV === "production" ? [] : null,
       },
     },
     strictTransportSecurity:
       process.env.NODE_ENV === "production" ? undefined : false,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
   }),
 );
+app.use((_req, res, next) => {
+  res.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  );
+  next();
+});
+// Automated scanners probe for PHP, WordPress and config files. None exist
+// here, so answer them cheaply instead of rendering a full 404 page.
+const probePath =
+  /\.(php\d?|aspx?|jsp|cgi|env|ini|sql|bak|old|swp|log)(\/|$)|^\/(wp-|xmlrpc|phpmyadmin|\.git|\.env|cgi-bin|server-status)/i;
+app.use((req, res, next) =>
+  probePath.test(req.path)
+    ? res.status(404).type("text").send("Not found")
+    : next(),
+);
 app.use(express.json({ limit: "24kb" }));
-app.use("/api", (_req, res, next) => {
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please slow down." },
+});
+app.use("/api", apiLimiter, (_req, res, next) => {
   res.set("Cache-Control", "no-store");
+  res.set("X-Robots-Tag", "noindex, nofollow");
   next();
 });
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
@@ -83,6 +120,7 @@ const allowedServices = new Set([
   "mobile-applications",
   "wordpress",
   "ai-automation",
+  "php-security",
   "not-sure",
 ]);
 const allowedTimelines = new Set([
@@ -357,13 +395,39 @@ if (existsSync(path.join(dist, "index.html"))) {
           "'": "&#39;",
         })[c],
     );
+  // Search engines and AI answer engines are explicitly welcome so the
+  // company can be found in Google, Bing, ChatGPT, Claude, Perplexity and Gemini.
+  const crawlers = [
+    "Googlebot",
+    "Bingbot",
+    "Google-Extended",
+    "GPTBot",
+    "OAI-SearchBot",
+    "ChatGPT-User",
+    "ClaudeBot",
+    "Claude-SearchBot",
+    "Claude-User",
+    "PerplexityBot",
+    "Applebot-Extended",
+    "*",
+  ];
   app.get("/robots.txt", (_req, res) =>
     res
       .type("text")
       .send(
-        `User-agent: *\nAllow: /\nDisallow: /api/\n${process.env.PUBLIC_ORIGIN ? `Sitemap: ${process.env.PUBLIC_ORIGIN}/sitemap.xml\n` : ""}`,
+        `${crawlers.map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /api/\n`).join("\n")}${process.env.PUBLIC_ORIGIN ? `\nSitemap: ${process.env.PUBLIC_ORIGIN}/sitemap.xml\n` : ""}`,
       ),
   );
+  app.get("/llms.txt", (_req, res) => {
+    if (!process.env.PUBLIC_ORIGIN)
+      return res
+        .status(503)
+        .type("text")
+        .send("Set PUBLIC_ORIGIN to generate llms.txt.");
+    res
+      .type("text/markdown")
+      .send(getLlmsText(process.env.PUBLIC_ORIGIN.replace(/\/$/, "")));
+  });
   app.get("/sitemap.xml", (_req, res) => {
     if (!process.env.PUBLIC_ORIGIN)
       return res
@@ -373,7 +437,7 @@ if (existsSync(path.join(dist, "index.html"))) {
     res
       .type("xml")
       .send(
-        `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...routes.keys()].map((p) => `<url><loc>${escape(process.env.PUBLIC_ORIGIN + p)}</loc></url>`).join("")}</urlset>`,
+        `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...routes.keys()].map((p) => `<url><loc>${escape(process.env.PUBLIC_ORIGIN + p)}</loc><changefreq>${p === "/" ? "weekly" : "monthly"}</changefreq><priority>${p === "/" ? "1.0" : p.split("/").length === 2 ? "0.8" : "0.6"}</priority></url>`).join("")}</urlset>`,
       );
   });
   app.use(
@@ -404,7 +468,7 @@ if (existsSync(path.join(dist, "index.html"))) {
         "\\u003c",
       );
       head.push(`<link rel="canonical" href="${escape(pageUrl)}"/>`);
-      head.push(`<meta property="og:type" content="website"/><meta property="og:site_name" content="Samarth Tech Software"/><meta property="og:title" content="${title}"/><meta property="og:description" content="${escape(metadata.description)}"/><meta property="og:url" content="${escape(pageUrl)}"/><meta property="og:image" content="${escape(imageUrl)}"/><meta name="twitter:card" content="summary"/><meta name="twitter:title" content="${title}"/><meta name="twitter:description" content="${escape(metadata.description)}"/><meta name="twitter:image" content="${escape(imageUrl)}"/><script type="application/ld+json">${structuredData}</script>`);
+      head.push(`<meta property="og:type" content="website"/><meta property="og:site_name" content="Samarth Tech Software"/><meta property="og:title" content="${title}"/><meta property="og:description" content="${escape(metadata.description)}"/><meta property="og:url" content="${escape(pageUrl)}"/><meta property="og:image" content="${escape(imageUrl)}"/><meta property="og:locale" content="en_IN"/><meta property="og:image:alt" content="Samarth Tech Software logo"/><meta name="twitter:card" content="summary"/><meta name="twitter:title" content="${title}"/><meta name="twitter:description" content="${escape(metadata.description)}"/><meta name="twitter:image" content="${escape(imageUrl)}"/><script type="application/ld+json">${structuredData}</script>`);
       if (process.env.GOOGLE_SITE_VERIFICATION)
         head.push(`<meta name="google-site-verification" content="${escape(process.env.GOOGLE_SITE_VERIFICATION)}"/>`);
       if (/^G-[A-Z0-9]+$/i.test(process.env.GOOGLE_ANALYTICS_ID || ""))

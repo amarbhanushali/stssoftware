@@ -125,11 +125,11 @@ try {
   await page.getByRole("searchbox").fill("nonexistent query");
   await page.getByText("No matching articles").waitFor();
   await page.getByRole("button", { name: "Clear filters" }).click();
-  assert.equal(await page.locator(".article-card").count(), 6);
+  assert.equal(await page.locator(".article-card").count(), articles.length);
   await page.getByRole("button", { name: "Practical AI", exact: true }).click();
   assert.equal(await page.locator(".article-card").count(), 1);
   await page.getByRole("link", { name: "Read guide", exact: true }).click();
-  await page.getByRole("heading", { name: "Choose a bounded task" }).waitFor();
+  await page.getByRole("heading", { name: "Start with one boring, repetitive task" }).waitFor();
   await page.goto(base + "/work");
   await page
     .getByRole("button", { name: "Mobile Solutions", exact: true })
@@ -146,7 +146,7 @@ try {
   await page.goto(base + "/consultation");
   await page
     .locator("summary")
-    .filter({ hasText: "How is the project price decided?" })
+    .filter({ hasText: "How much will my project cost?" })
     .click();
   assert.equal(await page.locator("details[open]").count(), 1);
   console.log(

@@ -11,9 +11,9 @@
   font-display: swap;
 }
 :root {
-  --navy: #123b73;
-  --blue: #0d52d6;
-  --orange: #ff6b00;
+  --navy: #0c2f6e;
+  --blue: #0a4abf;
+  --orange: #f96a00;
   --ink: #172033;
   --muted: #59697f;
   --line: #e2e8f0;
@@ -143,6 +143,10 @@ a:hover {
 .three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+/* A single card left on the last row sits in the middle column. */
+.three > .card:last-child:nth-child(3n + 1) {
+  grid-column: 2;
+}
 .two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -151,7 +155,7 @@ a:hover {
 }
 .eyebrow {
   font-family: var(--heading);
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -222,7 +226,7 @@ a:hover {
   background: #f1f4f9;
   border: 1px solid var(--line);
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.5;
   font-weight: 600;
   color: var(--navy);
@@ -272,7 +276,7 @@ a:hover {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 30px;
-  box-shadow: 0 2px 3px #123b7305;
+  box-shadow: 0 2px 3px #0c2f6e05;
 }
 .card p {
   font-size: 14px;
@@ -296,7 +300,7 @@ a:hover {
 .service-card:hover {
   transform: translateY(-4px);
   border-color: var(--blue);
-  box-shadow: 0 10px 25px #123b730a;
+  box-shadow: 0 10px 25px #0c2f6e0a;
 }
 .reveal-ready .reveal-section {
   opacity: 0;
@@ -454,7 +458,7 @@ a:hover {
   align-items: center;
 }
 .nav > a {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   position: relative;
   color: var(--muted);
@@ -478,9 +482,10 @@ a:hover {
   gap: 12px;
 }
 .header-actions .button {
-  font-size: 11px;
+  font-size: 14px;
   padding: 12px 14px;
   min-height: 42px;
+  white-space: nowrap;
 }
 .header-actions .button svg {
   width: 15px;
@@ -513,8 +518,8 @@ a:hover {
 .tech-grid {
   background-color: #fafbfe;
   background-image:
-    linear-gradient(#123b7303 1px, transparent 1px),
-    linear-gradient(90deg, #123b7303 1px, transparent 1px),
+    linear-gradient(#0c2f6e03 1px, transparent 1px),
+    linear-gradient(90deg, #0c2f6e03 1px, transparent 1px),
     radial-gradient(ellipse at 85% 20%, #e8effb88, transparent 65%);
   background-size:
     48px 48px,
@@ -541,7 +546,7 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.08em;
   background: #fff1e6;
   border: 1px solid #ffd4b2;
@@ -579,7 +584,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.5;
   font-weight: 650;
   color: var(--navy);
@@ -595,7 +600,7 @@ a:hover {
   border: 1px solid #cbd5e1;
   border-radius: 13px;
   padding: 25px;
-  box-shadow: 0 20px 45px -20px #123b7355;
+  box-shadow: 0 20px 45px -20px #0c2f6e55;
   overflow: hidden;
   animation: architecture-enter 700ms cubic-bezier(0.2, 0.75, 0.25, 1) 160ms
     both;
@@ -629,14 +634,14 @@ a:hover {
   border-bottom: 1px solid var(--line);
   padding-bottom: 18px;
   margin-bottom: 24px;
-  font-size: 8px;
+  font-size: 11px;
   color: var(--muted);
   font-weight: 700;
   letter-spacing: 0.035em;
 }
 .console-top > .tag {
   margin-left: auto;
-  font-size: 8px;
+  font-size: 11px;
   white-space: nowrap;
 }
 .window-dots {
@@ -669,12 +674,12 @@ a:hover {
 }
 .architecture-node strong {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--navy);
 }
 .architecture-node small {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 5px;
 }
@@ -710,11 +715,11 @@ a:hover {
 }
 .architecture-columns strong {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--navy);
 }
 .architecture-columns p {
-  font-size: 9px;
+  font-size: 12px;
   margin: 5px 0 12px;
 }
 .mini-bars {
@@ -742,7 +747,7 @@ a:hover {
   align-items: center;
   gap: 4px;
   color: #99501b;
-  font-size: 8px;
+  font-size: 11px;
   margin-top: 17px;
 }
 .mini-status svg {
@@ -791,7 +796,7 @@ a:hover {
   border-top: 1px solid var(--line);
   margin-top: 22px;
   padding-top: 14px;
-  font-size: 8px;
+  font-size: 11px;
   color: var(--muted);
 }
 .console-bottom span:first-child {
@@ -861,7 +866,7 @@ a:hover {
 }
 .stack-tile > span {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
   padding: 8px 0;
   border-top: 1px solid #f0f2f6;
@@ -902,7 +907,7 @@ a:hover {
 }
 .cta .eyebrow {
   color: #ffb179;
-  font-size: 10px;
+  font-size: 13px;
 }
 .cta .button {
   flex-shrink: 0;
@@ -923,7 +928,7 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   margin-bottom: 44px;
 }
@@ -941,7 +946,7 @@ a:hover {
   background: white;
   color: var(--muted);
   border-radius: 7px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
   min-height: 42px;
   padding: 10px 16px;
@@ -958,7 +963,7 @@ a:hover {
   border-color: var(--blue);
 }
 .result-count {
-  font-size: 12px;
+  font-size: 14px;
   margin-bottom: 20px;
 }
 .detail-layout {
@@ -986,14 +991,14 @@ a:hover {
 }
 .sidebar-card .button {
   width: 100%;
-  font-size: 12px;
+  font-size: 14px;
   margin-bottom: 10px;
 }
 .step-small {
   display: block;
   color: var(--blue);
   font-family: var(--heading);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   margin-bottom: 18px;
 }
@@ -1070,7 +1075,7 @@ details > p {
   background: white;
   border: 1px solid var(--line);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 15px;
   max-width: 750px;
 }
 .stage-output svg {
@@ -1078,7 +1083,7 @@ details > p {
 }
 .stage-output strong {
   display: block;
-  font-size: 10px;
+  font-size: 13px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
@@ -1086,7 +1091,7 @@ details > p {
 }
 .blue-copy {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--blue);
   margin-bottom: 13px;
 }
@@ -1120,13 +1125,13 @@ details > p {
 .stack-layers > div > span {
   grid-row: span 2;
   color: var(--blue);
-  font-size: 11px;
+  font-size: 14px;
 }
 .stack-layers strong {
-  font-size: 13px;
+  font-size: 15px;
 }
 .stack-layers small {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .about-grid {
@@ -1153,7 +1158,7 @@ details > p {
   max-width: 360px;
 }
 .about-mark > span {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.16em;
   color: var(--muted);
   margin-top: 32px;
@@ -1174,7 +1179,7 @@ details > p {
   background: #eef1f6;
 }
 .visual-label {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.12em;
   font-weight: 700;
   color: var(--muted);
@@ -1196,7 +1201,7 @@ details > p {
   height: 62px;
   border-radius: 10px;
   color: var(--blue);
-  box-shadow: 0 5px 15px #123b730a;
+  box-shadow: 0 5px 15px #0c2f6e0a;
 }
 .flow-nodes > span:last-child {
   color: #b94d00;
@@ -1212,7 +1217,7 @@ details > p {
   display: block;
   text-align: center;
   letter-spacing: 0.14em;
-  font-size: 8px;
+  font-size: 11px;
   color: var(--navy);
 }
 .project-content,
@@ -1223,7 +1228,7 @@ details > p {
   font-size: 23px;
 }
 .project-content .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
 }
 .check-list {
   list-style: none;
@@ -1266,7 +1271,7 @@ details > p {
   min-width: 0;
   border: 0;
   padding: 11px 0;
-  font-size: 12px;
+  font-size: 16px;
   width: 100%;
   background: transparent;
 }
@@ -1293,14 +1298,14 @@ details > p {
   position: absolute;
   height: 150px;
   width: 150px;
-  border: 1px solid #0d52d61a;
+  border: 1px solid #0a4abf1a;
   transform: rotate(45deg);
   bottom: -90px;
   left: 30px;
 }
 .article-cover > span {
   font-family: var(--heading);
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   font-weight: 750;
   text-transform: uppercase;
@@ -1325,7 +1330,7 @@ details > p {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  font-size: 10px;
+  font-size: 13px;
   color: var(--muted);
   margin-bottom: 18px;
 }
@@ -1334,14 +1339,14 @@ details > p {
   line-height: 1.45;
 }
 .article-content p {
-  font-size: 13px;
+  font-size: 15px;
 }
 .article-byline {
   display: flex;
   align-items: center;
   gap: 10px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 25px;
 }
 .article-byline svg {
@@ -1390,7 +1395,7 @@ details > p {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--blue);
   background: #edf2fa;
   font-weight: 750;
@@ -1400,7 +1405,7 @@ details > p {
   margin-bottom: 7px;
 }
 .next-step p {
-  font-size: 13px;
+  font-size: 15px;
 }
 .privacy-note {
   padding: 20px;
@@ -1416,7 +1421,7 @@ details > p {
   width: 19px;
 }
 .privacy-note p {
-  font-size: 12px;
+  font-size: 14px;
   margin: 0;
 }
 .form-card {
@@ -1424,7 +1429,7 @@ details > p {
   background: white;
   border: 1px solid #d5dfeb;
   border-radius: 12px;
-  box-shadow: 0 12px 35px #123b7308;
+  box-shadow: 0 12px 35px #0c2f6e08;
   position: relative;
   overflow: hidden;
 }
@@ -1439,7 +1444,7 @@ details > p {
   font-size: 26px;
 }
 .form-intro {
-  font-size: 12px;
+  font-size: 14px;
   margin: 0 0 25px;
 }
 form {
@@ -1454,7 +1459,7 @@ form {
 form label {
   display: grid;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
   color: var(--ink);
 }
@@ -1466,7 +1471,7 @@ form textarea {
   background: white;
   border-radius: 6px;
   padding: 12px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 400;
   color: var(--ink);
   min-height: 44px;
@@ -1486,7 +1491,7 @@ form fieldset {
   min-width: 0;
 }
 form legend {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
   margin-bottom: 10px;
 }
@@ -1509,7 +1514,7 @@ form legend {
 }
 .radio-options span {
   display: block;
-  font-size: 11px;
+  font-size: 14px;
   padding: 11px 9px;
   border: 1px solid var(--line);
   background: #f8fafc;
@@ -1559,12 +1564,12 @@ form legend {
   border: 1px solid #f2b6b6;
   background: #fff2f2;
   color: #9e2525;
-  font-size: 13px;
+  font-size: 15px;
   line-height: 1.6;
   border-radius: 5px;
 }
 .form-footnote {
-  font-size: 10px;
+  font-size: 13px;
   text-align: center;
   margin: 0;
 }
@@ -1599,7 +1604,7 @@ form legend {
   overflow-wrap: anywhere;
 }
 footer {
-  background: #0e2e59;
+  background: #0a2556;
   color: #becce0;
   padding: 60px 0 0;
 }
@@ -1608,39 +1613,35 @@ footer {
   grid-template-columns: 1.2fr 1fr 0.7fr 1fr;
   gap: 45px;
 }
+/* The logo is blue on transparent, so it sits on a white tile over the navy
+   footer. The fixed height crops the PNG's built-in top and bottom padding. */
 .footer-brand {
-  font-family: var(--heading);
-  font-size: 25px;
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  color: white;
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  height: 64px;
+  overflow: hidden;
+  padding: 0 14px;
   margin-bottom: 20px;
+  background: var(--white);
+  border-radius: 12px;
 }
-.footer-brand > span {
-  color: #ff974c;
-}
-.footer-brand small {
-  display: block;
-  font-size: 9px;
-  letter-spacing: 0.4em;
-  margin-top: 3px;
-  color: #b6c9e3;
-  font-weight: 500;
+.footer-brand img {
+  width: 150px;
+  height: auto;
 }
 .footer-grid p {
-  font-size: 12px;
+  font-size: 14px;
   color: #a9bdd7;
 }
 .footer-grid h3 {
-  font-size: 13px;
+  font-size: 15px;
   color: white;
   margin-bottom: 22px;
   letter-spacing: 0;
 }
 .footer-grid > div > a:not(.footer-brand):not(.button):not(.footer-contact) {
   display: block;
-  font-size: 11px;
+  font-size: 14px;
   color: #b8c9e0;
   padding: 7px 0;
 }
@@ -1648,12 +1649,18 @@ footer {
   color: white !important;
 }
 .footer-grid .button {
-  font-size: 11px;
+  font-size: 14px;
   padding: 10px 15px;
   color: #351800;
 }
+.footer-address {
+  font-size: 14px;
+  font-style: normal;
+  color: #a9bdd7;
+  margin-top: 12px;
+}
 .footer-contact {
-  font-size: 11px;
+  font-size: 14px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1670,7 +1677,7 @@ footer {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  font-size: 10px;
+  font-size: 13px;
   color: #94accb;
 }
 .footer-bottom > div {
@@ -1707,7 +1714,7 @@ footer {
     width: 125px;
   }
   .header-actions .button {
-    font-size: 10px;
+    font-size: 13px;
     padding-inline: 10px;
   }
   .hero-grid {
@@ -1718,10 +1725,10 @@ footer {
     padding: 20px;
   }
   .console-top {
-    font-size: 7px;
+    font-size: 11px;
   }
   .console-top > .tag {
-    font-size: 7px;
+    font-size: 11px;
   }
   .trust-row {
     grid-template-columns: 1fr 1fr;
@@ -1754,7 +1761,7 @@ footer {
     background: white;
     padding: 14px 24px 20px;
     border-bottom: 1px solid var(--line);
-    box-shadow: 0 10px 20px #123b730a;
+    box-shadow: 0 10px 20px #0c2f6e0a;
   }
   .nav.open {
     display: grid;
@@ -1782,7 +1789,7 @@ footer {
     height: auto;
   }
   .header-actions .button {
-    font-size: 11px;
+    font-size: 14px;
     padding: 11px 14px;
   }
   .hero-grid {
@@ -1801,10 +1808,10 @@ footer {
     justify-self: center;
   }
   .console-top {
-    font-size: 8px;
+    font-size: 11px;
   }
   .console-top > .tag {
-    font-size: 8px;
+    font-size: 11px;
   }
   .home-hero {
     padding: 55px 0 65px;
@@ -1814,6 +1821,9 @@ footer {
   }
   .three {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .three > .card:last-child:nth-child(3n + 1) {
+    grid-column: auto;
   }
   .process-strip {
     grid-template-columns: repeat(3, 1fr);
@@ -1904,7 +1914,7 @@ footer {
     gap: 12px;
   }
   .hero-actions .button {
-    font-size: 13px;
+    font-size: 15px;
   }
   .trust-row {
     grid-template-columns: 1fr 1fr;
@@ -1913,7 +1923,7 @@ footer {
     padding-top: 22px;
   }
   .trust-row span {
-    font-size: 10px;
+    font-size: 13px;
   }
   .brand img {
     width: 123px;
@@ -1930,31 +1940,29 @@ footer {
     gap: 8px;
   }
   .header-actions .button {
-    font-size: 9px;
-    max-width: 140px;
+    font-size: 12px;
     padding: 9px 10px;
-    gap: 5px;
     min-height: 39px;
   }
   .header-actions .button svg {
-    width: 12px;
+    display: none;
   }
   .menu-toggle {
     width: 39px;
     height: 39px;
   }
   .badge {
-    font-size: 8px;
+    font-size: 12px;
   }
   .architecture {
     padding: 20px 16px;
   }
   .console-top {
     gap: 6px;
-    font-size: 6px;
+    font-size: 11px;
   }
   .console-top > .tag {
-    font-size: 6px;
+    font-size: 11px;
     padding: 4px;
   }
   .window-dots i {
@@ -1968,13 +1976,13 @@ footer {
     padding: 14px 10px;
   }
   .architecture-columns strong {
-    font-size: 11px;
+    font-size: 13px;
   }
   .architecture-columns p {
-    font-size: 8px;
+    font-size: 11px;
   }
   .console-bottom {
-    font-size: 7px;
+    font-size: 11px;
   }
   .console-bottom span:first-child {
     gap: 3px;
@@ -2017,7 +2025,7 @@ footer {
     gap: 18px;
   }
   .process-strip h3 {
-    font-size: 12px;
+    font-size: 14px;
   }
   .process-strip > a > span {
     font-size: 27px;
@@ -2042,13 +2050,13 @@ footer {
   }
   .breadcrumbs {
     margin-bottom: 28px;
-    font-size: 10px;
+    font-size: 13px;
   }
   .filters {
     gap: 7px;
   }
   .filters button {
-    font-size: 10px;
+    font-size: 13px;
     padding: 10px 12px;
     min-height: 40px;
   }
@@ -2071,10 +2079,10 @@ footer {
   }
   .stage-output {
     padding: 13px;
-    font-size: 11px;
+    font-size: 14px;
   }
   .stage-output strong {
-    font-size: 9px;
+    font-size: 12px;
   }
   .stack-panel {
     grid-template-columns: 1fr;
@@ -2126,13 +2134,13 @@ footer {
     gap: 22px;
   }
   .checkbox-label {
-    font-size: 11px;
+    font-size: 14px;
   }
   .success-state {
     padding: 20px 0;
   }
   .receipt {
-    font-size: 13px;
+    font-size: 15px;
   }
   .footer-grid {
     gap: 32px;
@@ -2152,9 +2160,6 @@ footer {
   .footer-bottom > div {
     margin-top: 12px;
   }
-  .footer-brand {
-    font-size: 27px;
-  }
   .footer-grid h3 {
     margin-bottom: 12px;
   }
@@ -2169,7 +2174,7 @@ footer {
     margin-left: 0;
   }
   .article-meta {
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
