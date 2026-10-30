@@ -9,7 +9,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { services, stages, projects, articles, faqs } from "./data.js";
-import { getMetadata } from "./metadata.js";
+import { company, getMetadata } from "./metadata.js";
 
 const paths = {
   arrow: "M5 12h14m-6-6 6 6-6 6",
@@ -160,6 +160,9 @@ function Footer() {
             <br />
             Maharashtra, India
           </address>
+          <a className="footer-email" href={`mailto:${company.email}`}>
+            {company.email}
+          </a>
           <Link className="footer-contact" to="/contact">
             Let’s talk about your project <Icon />
           </Link>
@@ -1359,6 +1362,13 @@ function Consultation() {
               <p>
                 Please share a high-level overview. Leave passwords, financial
                 records and other confidential data out of this form.
+              </p>
+            </div>
+            <div className="privacy-note">
+              <Icon name="mail" />
+              <p>
+                Prefer email? Write to{" "}
+                <a href={`mailto:${company.email}`}>{company.email}</a>.
               </p>
             </div>
             <div className="privacy-note">

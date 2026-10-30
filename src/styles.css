@@ -1659,6 +1659,9 @@ footer {
   color: #a9bdd7;
   margin-top: 12px;
 }
+.footer-email {
+  font-size: 14px;
+}
 .footer-contact {
   font-size: 14px;
   display: inline-flex;

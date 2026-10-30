@@ -193,6 +193,9 @@ test("emits structured data for local search", async () => {
   const types = json["@graph"].flatMap((node) => node["@type"]);
   for (const type of ["Organization", "BreadcrumbList", "Service", "FAQPage"])
     assert.ok(types.includes(type), type);
+  const org = json["@graph"].find((node) => [node["@type"]].flat().includes("Organization"));
+  assert.equal(org.email, "sales@stssoftware.in");
+  assert.match(html, /href="mailto:sales@stssoftware\.in"/);
 });
 
 test("rejects scanner probes and sets hardening headers", async () => {
