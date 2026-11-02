@@ -195,6 +195,12 @@ test("emits structured data for local search", async () => {
     assert.ok(types.includes(type), type);
   const org = json["@graph"].find((node) => [node["@type"]].flat().includes("Organization"));
   assert.equal(org.email, "sales@stssoftware.in");
+  assert.deepEqual(org.sameAs, [
+    "https://www.linkedin.com/company/samarthtechsoftware",
+    "https://www.facebook.com/ststechsoftware",
+  ]);
+  assert.match(html, /href="https:\/\/www\.linkedin\.com\/company\/samarthtechsoftware"/);
+  assert.match(html, /href="https:\/\/www\.facebook\.com\/ststechsoftware"/);
   assert.match(html, /href="mailto:sales@stssoftware\.in"/);
 });
 
@@ -241,6 +247,9 @@ test("enquiry emails use the branded template and escape form content", async ()
     assert.match(mail.text, /<script>/);
   }
   assert.match(teamEmail(record, origin).html, /untrusted/);
+  for (const mail of [teamEmail(record, origin), visitorEmail(record, origin)])
+    assert.match(mail.html, /linkedin\.com\/company\/samarthtechsoftware[\s\S]*facebook\.com\/ststechsoftware/);
+  assert.match(visitorEmail(record, origin).text, /LinkedIn: https:\/\/www\.linkedin\.com/);
   assert.match(visitorEmail(record, origin).html, /src="https:\/\/stssoftware\.in\/sts-logo\.png"/);
   assert.doesNotMatch(visitorEmail(record, "http://localhost:3001").html, /<img/);
 });

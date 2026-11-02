@@ -1674,6 +1674,24 @@ footer {
 .footer-contact svg {
   width: 14px;
 }
+.footer-social {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+.footer-social a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #ffffff24;
+  border-radius: 8px;
+  color: #b8c9e0;
+}
+.footer-social a:hover {
+  border-color: #ffffff55;
+}
 .footer-bottom {
   margin-top: 45px;
   border-top: 1px solid #ffffff18;

@@ -5,6 +5,10 @@ export const company = {
   region: "Maharashtra",
   country: "India",
   email: "sales@stssoftware.in",
+  social: [
+    ["LinkedIn", "https://www.linkedin.com/company/samarthtechsoftware"],
+    ["Facebook", "https://www.facebook.com/ststechsoftware"],
+  ],
 };
 const baseDescription =
   "Samarth Tech Software is a software company in Nashik, Maharashtra. We build websites, custom software, mobile apps and AI automation for businesses across India.";
@@ -153,6 +157,7 @@ export function getStructuredData(pathname, origin) {
       url: origin,
       email: company.email,
       logo: `${origin}/sts-logo.png`,
+      sameAs: company.social.map(([, url]) => url),
       image: `${origin}/sts-whatsapp-app-icon.png`,
       description: baseDescription,
       address: {

@@ -74,12 +74,15 @@ ${closing ? `<p style="margin:20px 0 0;font-size:15px;line-height:1.5;color:${co
 </td></tr>
 <tr><td style="padding:16px 24px;background:${colors.canvas};border-top:1px solid ${colors.line};font-size:12px;line-height:1.5;color:${colors.muted}">
 <strong style="color:${colors.ink}">${escape(company.name)}</strong><br>${escape(address)}<br>
-${site}<a href="mailto:${escape(company.email)}" style="color:${colors.navy}">${escape(company.email)}</a>
+${site}<a href="mailto:${escape(company.email)}" style="color:${colors.navy}">${escape(company.email)}</a><br>
+${company.social.map(([network, url]) => `<a href="${escape(url)}" style="color:${colors.navy}">${network}</a>`).join(" · ")}
 </td></tr>
 </table></td></tr></table>
 </body></html>`;
 }
 
+const textSocial = () =>
+  company.social.map(([network, url]) => `${network}: ${url}`).join("\n");
 const textDetails = (record) =>
   details(record)
     .map(([label, value]) => `${label}: ${value}`)
@@ -118,7 +121,7 @@ export function visitorEmail(record, origin) {
       "We received your enquiry | Samarth Tech Software",
     text:
       process.env.AUTO_REPLY_EMAIL_TEXT ||
-      `Hello ${record.name},\n\n${intro.join("\n\n")}\n\n${textDetails(record)}\n\nProject details:\n${record.message}\n\n${note}\n\nRegards,\n${company.name}`,
+      `Hello ${record.name},\n\n${intro.join("\n\n")}\n\n${textDetails(record)}\n\nProject details:\n${record.message}\n\n${note}\n\nRegards,\n${company.name}\n${company.email}\n${textSocial()}`,
     // A custom AUTO_REPLY_EMAIL_TEXT replaces the whole message, so no HTML
     // part is sent that would contradict it.
     html: process.env.AUTO_REPLY_EMAIL_TEXT

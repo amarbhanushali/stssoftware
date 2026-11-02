@@ -134,6 +134,12 @@ function Header() {
     </header>
   );
 }
+const socialPaths = {
+  LinkedIn:
+    "M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z",
+  Facebook:
+    "M9.1 23.69v-7.98H6.63v-3.67H9.1v-1.58c0-4.09 1.85-5.98 5.86-5.98.4 0 .96.04 1.47.1.38.04.76.11 1.14.2v3.32a26.8 26.8 0 0 0-1.39-.04c-.7 0-1.26.1-1.67.31a1.69 1.69 0 0 0-.68.62c-.26.42-.38 1-.38 1.75v1.3h3.92l-.67 3.67h-3.25v8.24C19.4 23.24 24 18.18 24 12.04c0-6.63-5.37-12-12-12S0 5.42 0 12.04c0 5.63 3.87 10.35 9.1 11.65z",
+};
 function Footer() {
   return (
     <footer>
@@ -166,6 +172,27 @@ function Footer() {
           <Link className="footer-contact" to="/contact">
             Let’s talk about your project <Icon />
           </Link>
+          <div className="footer-social">
+            {company.social.map(([network, url]) => (
+              <a
+                key={network}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Samarth Tech Software on ${network} (opens in a new tab)`}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d={socialPaths[network]} />
+                </svg>
+              </a>
+            ))}
+          </div>
         </div>
         <div>
           <h3>Capabilities</h3>
