@@ -352,6 +352,7 @@ export const articles = [
   {
     slug: "laravel-security-2026",
     category: "Web Development",
+    services: ["php-security", "web-applications"],
     title: "Laravel security in 2026: what should your business check?",
     intro:
       "That your Laravel version still gets security fixes, that passwords and debug mode are locked down, and that every API checks who is asking.",
@@ -390,6 +391,7 @@ export const articles = [
   {
     slug: "php-security-update-october-2026",
     category: "Web Development",
+    services: ["php-security", "wordpress"],
     title: "PHP security update, October 2026: is your server safe?",
     intro:
       "Only if it runs PHP 8.5.12, 8.4.27, 8.3.36, 8.2.35 or a host-patched equivalent. PHP 8.1 and older get no security fixes at all.",
@@ -428,6 +430,7 @@ export const articles = [
   {
     slug: "scope-your-software-project",
     category: "Project Planning",
+    services: ["custom-software", "web-applications"],
     title: "How to plan a software project before you hire a developer",
     intro:
       "You do not need a technical document. A clear picture of one real task, from start to finish, is the best brief you can give.",
@@ -454,6 +457,7 @@ export const articles = [
   {
     slug: "practical-ai-automation",
     category: "Practical AI",
+    services: ["ai-automation"],
     title: "Where should a small business start with AI automation?",
     intro:
       "Start with one repetitive task that has clear inputs, results a person can check quickly and mistakes that are cheap to fix.",
@@ -480,6 +484,7 @@ export const articles = [
   {
     slug: "replace-spreadsheets",
     category: "Business Systems",
+    services: ["custom-software", "web-applications"],
     title: "When is it time to replace your Excel sheet with software?",
     intro:
       "When people spend more time fixing and merging copies of the sheet than using it. Size alone is not the reason.",
@@ -506,6 +511,7 @@ export const articles = [
   {
     slug: "website-launch-checklist",
     category: "Web Development",
+    services: ["website-development", "wordpress"],
     title: "A simple checklist before your business website goes live",
     intro:
       "Check that a customer can find what they need and contact you easily, on a phone as well as a laptop. Looks come second.",
@@ -532,6 +538,7 @@ export const articles = [
   {
     slug: "plan-system-integration",
     category: "Business Systems",
+    services: ["custom-software", "ai-automation"],
     title: "Questions to ask before connecting two business systems",
     intro:
       "Agree which system owns each piece of data and what should happen when the connection fails. Most integration problems start there.",
@@ -558,6 +565,7 @@ export const articles = [
   {
     slug: "mobile-offline-workflows",
     category: "Mobile Apps",
+    services: ["mobile-applications"],
     title: "How to design a mobile app that works with poor network",
     intro:
       "Decide which tasks must work without a connection, and always show the user whether their work has reached the office yet.",

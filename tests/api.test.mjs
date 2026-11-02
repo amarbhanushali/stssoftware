@@ -253,3 +253,17 @@ test("enquiry emails use the branded template and escape form content", async ()
   assert.match(visitorEmail(record, origin).html, /src="https:\/\/stssoftware\.in\/sts-logo\.png"/);
   assert.doesNotMatch(visitorEmail(record, "http://localhost:3001").html, /<img/);
 });
+
+test("articles and service pages link to each other", async () => {
+  const { services, articles } = await import("../src/data.js");
+  const slugs = new Set(services.map((s) => s.slug));
+  for (const a of articles) {
+    assert.ok(a.services?.length, a.slug);
+    for (const s of a.services) assert.ok(slugs.has(s), `${a.slug} → ${s}`);
+  }
+  const service = await (await fetch(base + "/services/php-security")).text();
+  assert.match(service, /href="\/insights\/laravel-security-2026"/);
+  const article = await (await fetch(base + "/insights/laravel-security-2026")).text();
+  assert.match(article, /href="\/services\/php-security"/);
+  assert.equal(article.match(/<h1[\s>]/g).length, 1);
+});

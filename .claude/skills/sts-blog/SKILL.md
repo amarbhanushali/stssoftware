@@ -131,6 +131,7 @@ Posts live in the `articles` array in `src/data.js`. There is no CMS and no Mark
 {
   slug: "website-or-mobile-app-first", // lowercase, hyphenated, stable forever
   category: "Web Development", // reuse an existing category where possible
+  services: ["website-development"], // 1–2 related service slugs; links the guide and the service pages both ways
   title: "Website or mobile app: which should your business build first?",
   intro: "For most businesses, a website that works well on a phone comes first. Build an app when customers need it every week, not once.",
   minutes: 4, // about 200 words per minute, rounded up

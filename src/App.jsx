@@ -655,6 +655,7 @@ function ServiceDetail() {
   const { slug } = useParams();
   const s = services.find((s) => s.slug === slug);
   if (!s) return <NotFound />;
+  const guides = articles.filter((a) => a.services.includes(s.slug));
   return (
     <>
       <Hero
@@ -714,6 +715,35 @@ function ServiceDetail() {
           <FAQ items={faqs} />
         </div>
       </section>
+      {guides.length > 0 && (
+        <section className="section">
+          <div className="container">
+            <SectionHeading
+              eyebrow="RELATED GUIDES"
+              title="Guides to read before you decide"
+            />
+            <div className="grid three">
+              {guides.map((a) => (
+                <article className="card article-card" key={a.slug}>
+                  <div className="article-content">
+                    <div className="article-meta">
+                      <Tag>{a.category}</Tag>
+                      <span>{a.minutes} min read</span>
+                    </div>
+                    <h3>
+                      <Link to={`/insights/${a.slug}`}>{a.title}</Link>
+                    </h3>
+                    <p>{a.intro}</p>
+                    <Link className="text-link" to={`/insights/${a.slug}`}>
+                      Read guide <Icon />
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
       <CTA />
     </>
   );
@@ -1258,6 +1288,20 @@ function Article() {
               <p>{p}</p>
             </section>
           ))}
+          <section>
+            <h2>Services related to this guide</h2>
+            <ul className="related-links">
+              {a.services.map((slug) => {
+                const s = services.find((s) => s.slug === slug);
+                return (
+                  <li key={slug}>
+                    <Link to={`/services/${slug}`}>{s.name}</Link>
+                    <span>{s.short}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
           <div className="article-end">
             <p>Thinking about something similar for your business?</p>
             <Button>Talk Through Your Requirements</Button>
