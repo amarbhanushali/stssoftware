@@ -350,6 +350,44 @@ export const projects = [
 ];
 export const articles = [
   {
+    slug: "laravel-security-2026",
+    category: "Web Development",
+    title: "Laravel security in 2026: what should your business check?",
+    intro:
+      "That your Laravel version still gets security fixes, that passwords and debug mode are locked down, and that every API checks who is asking.",
+    minutes: 4,
+    sections: [
+      [
+        "Is your Laravel version still getting security fixes?",
+        "Laravel is the PHP toolkit behind many custom business portals, dashboards and billing systems, so ask your developer which version yours runs. Laravel 11 stopped receiving security fixes on 12 March 2026. Laravel 12 stopped getting bug fixes in August 2026 and gets security fixes only until 24 February 2027. Laravel 13, released in March 2026, is supported until March 2028 and needs PHP 8.3 or newer. An unsupported version does not break on the day support ends; it simply stops being repaired when the next flaw is found.",
+      ],
+      [
+        "Most Laravel break-ins start with settings, not code",
+        "The common mistakes are simple. Debug mode is left on, so an error page shows file paths and settings to anyone. The environment file that holds database passwords, email logins and the app’s master encryption key is reachable from the browser or committed to Git. The database or cache server is open to the internet instead of a private network. The fix is equally plain: debug mode off in production, that file outside the public folder and out of Git, every key and password changed if it was ever exposed, HTTPS everywhere and cookies marked secure.",
+      ],
+      [
+        "Your app is only as safe as the packages it uses",
+        "A Laravel app is built from dozens of ready-made packages, from Composer on the PHP side and npm on the JavaScript side, and each of those brings in more. One outdated or compromised package can open a hole in otherwise careful code. Both Composer and npm include an audit check that lists packages with known security problems. Run it automatically every time code changes, look at a new package before adding it, update on purpose rather than by accident, and treat a critical advisory as work for this week, not next quarter.",
+      ],
+      [
+        "Every API and AI feature needs its own lock",
+        "An API is a connection between your app and something else: your mobile app, Tally, a payment gateway or an AI service. Fortinet’s 2026 Web Application Security Report, a survey of more than 800 security professionals, found 55 per cent rank AI-generated or AI-accelerated attacks as a leading emerging risk, and many teams struggle to keep track of the connections AI features add. Keep a written list of every connection. Each one should check who is calling, whether that person may see this particular record, what data is sent, and how often it can be called. Give an AI feature read access to only the data it needs.",
+      ],
+      [
+        "Do not trust a request just because it comes from inside",
+        "Many business apps check only that someone is logged in. That is not enough when a dealer can change the number in the address bar and open another dealer’s invoice. Check ownership on every record, give each role only the permissions it needs, use multi-factor login for administrators, and make access tokens for mobile apps and integrations expire. Laravel’s own defaults help: it hashes passwords, escapes page output, protects forms against forged requests and, in Laravel 13, also checks where a request came from. It cannot know which customer may see which order. That rule is yours to write and test.",
+      ],
+      [
+        "Upgrade now or live with an old version?",
+        "If your app is on Laravel 11 or 12 and has tests, moving to Laravel 13 is usually a modest job, because the Laravel team kept breaking changes small in this release. An app on Laravel 8 or older, heavily customised and without tests, is a project in its own right; budget for it rather than leave it, or put extra protection in front of it while you plan. If the app does little that a standard product such as Zoho or a well-maintained WordPress plugin could not, replacing it may cost less than keeping it safe.",
+      ],
+      [
+        "What to do this week",
+        "Ask whoever maintains your Laravel app three questions in writing: which Laravel and PHP versions are live and when their security fixes end, whether debug mode is off and the environment file is unreachable from a browser, and when the Composer and npm audits were last run. Then log in as an ordinary customer or staff member and try to open someone else’s record by changing the number in the address bar. If that works, fix it before anything else on this list.",
+      ],
+    ],
+  },
+  {
     slug: "php-security-update-october-2026",
     category: "Web Development",
     title: "PHP security update, October 2026: is your server safe?",
