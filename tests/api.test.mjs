@@ -220,3 +220,27 @@ test("every published service can be selected in an enquiry", async () => {
   const html = await (await fetch(base + "/services/php-security")).text();
   assert.match(html, /<title>PHP Security &amp; Server Hardening in Nashik/);
 });
+
+test("enquiry emails use the branded template and escape form content", async () => {
+  const { teamEmail, visitorEmail } = await import("../server/email.mjs");
+  const record = {
+    ...payload,
+    id: "STS-TEST",
+    name: '<img src=x onerror="alert(1)">',
+    message: "Line one <script>alert(1)</script>\nLine two & more",
+  };
+  const origin = "https://stssoftware.in";
+  for (const mail of [teamEmail(record, origin), visitorEmail(record, origin)]) {
+    assert.match(mail.html, /Samarth Tech Software/);
+    assert.match(mail.html, /sales@stssoftware\.in/);
+    assert.match(mail.html, /Custom Software Development/);
+    assert.match(mail.html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;<br>Line two &amp; more/);
+    assert.match(mail.html, /&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);
+    assert.doesNotMatch(mail.html, /<script|<img src=x/);
+    assert.match(mail.text, /Reference: STS-TEST/);
+    assert.match(mail.text, /<script>/);
+  }
+  assert.match(teamEmail(record, origin).html, /untrusted/);
+  assert.match(visitorEmail(record, origin).html, /src="https:\/\/stssoftware\.in\/sts-logo\.png"/);
+  assert.doesNotMatch(visitorEmail(record, "http://localhost:3001").html, /<img/);
+});

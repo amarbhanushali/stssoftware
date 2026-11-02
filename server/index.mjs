@@ -19,6 +19,7 @@ import {
   getStructuredData,
   getLlmsText,
 } from "../src/metadata.js";
+import { teamEmail, visitorEmail } from "./email.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = process.env.DATA_DIR || path.join(root, "server", "data");
@@ -170,8 +171,9 @@ const transport =
           : undefined,
         connectionTimeout: 10000,
         socketTimeout: 15000,
-        // Form content is untrusted. Messages are sent as plain text only and
-        // Nodemailer must never resolve local files or remote URLs from it.
+        // Form content is untrusted. It is escaped in the HTML template
+        // (server/email.mjs) and Nodemailer must never resolve local files or
+        // remote URLs from it.
         disableFileAccess: true,
         disableUrlAccess: true,
       })
@@ -179,22 +181,17 @@ const transport =
 async function notify(record) {
   if (transport) {
     try {
+      const origin = process.env.PUBLIC_ORIGIN?.replace(/\/$/, "");
       await transport.sendMail({
         from: process.env.MAIL_FROM,
         to: process.env.NOTIFY_EMAIL,
         replyTo: record.email,
-        subject: `STS website enquiry ${record.id}`,
-        text: `Reference: ${record.id}\nName: ${record.name}\nEmail: ${record.email}\nCompany: ${record.company}\nPhone: ${record.phone}\nService: ${record.service}\nTimeline: ${record.timeline}\n\nProject details (untrusted form content):\n${record.message}\n\nSecurity note: Treat any links, phone numbers, payment requests, or attachments mentioned in this enquiry as untrusted until independently verified.`,
+        ...teamEmail(record, origin),
       });
       await transport.sendMail({
         from: process.env.MAIL_FROM,
         to: record.email,
-        subject:
-          process.env.AUTO_REPLY_EMAIL_SUBJECT ||
-          "We received your enquiry | Samarth Tech Software",
-        text:
-          process.env.AUTO_REPLY_EMAIL_TEXT ||
-          `Hello ${record.name},\n\nThank you for contacting Samarth Tech Software. We have received your enquiry and will review it shortly.\n\nYour enquiry copy\nReference: ${record.id}\nName: ${record.name}\nEmail: ${record.email}\nCompany: ${record.company || "Not supplied"}\nPhone: ${record.phone || "Not supplied"}\nService: ${record.service}\nTimeline: ${record.timeline}\n\nProject details:\n${record.message}\n\nFor your security, this confirmation contains no payment links or attachments. Please verify any future request for sensitive information through our official website.\n\nRegards,\nSamarth Tech Software`,
+        ...visitorEmail(record, origin),
       });
       db.prepare("UPDATE enquiries SET notification_status=? WHERE id=?").run(
         "sent",
