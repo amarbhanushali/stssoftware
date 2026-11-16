@@ -39,6 +39,7 @@ function details(record) {
     ["Phone", record.phone || "Not supplied"],
     ["Service", serviceName(record.service)],
     ["Timeline", record.timeline],
+    ["Source", record.source === "chat" ? "Website chat assistant" : "Contact form"],
   ];
 }
 
@@ -92,14 +93,16 @@ export function teamEmail(record, origin) {
   const note =
     "Security note: Treat any links, phone numbers, payment requests, or attachments mentioned in this enquiry as untrusted until independently verified.";
   return {
-    subject: `STS website enquiry ${record.id}`,
+    subject: `STS ${record.source === "chat" ? "chat" : "website"} enquiry ${record.id}`,
     text: `${textDetails(record)}\n\nProject details (untrusted form content):\n${record.message}\n\n${note}`,
     html: layout({
       origin,
       preheader: `New enquiry from ${record.name} about ${serviceName(record.service)}`,
       heading: "New website enquiry",
       intro: [
-        "A visitor submitted the consultation form. Reply to this email to answer them directly.",
+        record.source === "chat"
+          ? "A visitor described their project to the website chat assistant, reviewed this summary and sent it. Reply to this email to answer them directly."
+          : "A visitor submitted the consultation form. Reply to this email to answer them directly.",
       ],
       record,
       messageLabel: "Project details (untrusted form content)",

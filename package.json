@@ -7,6 +7,7 @@
     "build": "vite build && vite build --ssr server/render.jsx --outDir server/rendered",
     "start": "node --env-file-if-exists=.env server/index.mjs",
     "enquiries": "node --env-file-if-exists=.env scripts/enquiries.mjs",
+    "mail:test": "node --env-file-if-exists=.env scripts/mail-test.mjs",
     "test": "node --test tests/api.test.mjs",
     "test:browser": "node tests/browser.test.mjs",
     "format": "prettier --write src server/index.mjs server/render.jsx scripts/enquiries.mjs tests/*.mjs vite.config.js"

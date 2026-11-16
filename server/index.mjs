@@ -1,7 +1,13 @@
 import express from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import nodemailer from "nodemailer";
+import {
+  createMailTransport,
+  describeMailError,
+  mailSummary,
+  mailWarnings,
+  missingMailSettings,
+} from "./mail.mjs";
 import { DatabaseSync } from "node:sqlite";
 import {
   randomBytes,
@@ -20,6 +26,7 @@ import {
   getLlmsText,
 } from "../src/metadata.js";
 import { teamEmail, visitorEmail } from "./email.mjs";
+import { askAssistant, chatEnabled, cleanMessages } from "./chat.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = process.env.DATA_DIR || path.join(root, "server", "data");
@@ -37,6 +44,11 @@ try {
   db.exec(
     "ALTER TABLE enquiries ADD COLUMN whatsapp_opt_in INTEGER NOT NULL DEFAULT 0",
   );
+} catch (error) {
+  if (!String(error.message).includes("duplicate column name")) throw error;
+}
+try {
+  db.exec("ALTER TABLE enquiries ADD COLUMN source TEXT NOT NULL DEFAULT 'form'");
 } catch (error) {
   if (!String(error.message).includes("duplicate column name")) throw error;
 }
@@ -160,52 +172,64 @@ function validCsrf(req) {
     .digest("hex");
   return timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
 }
-const transport =
-  process.env.SMTP_HOST && process.env.NOTIFY_EMAIL && process.env.MAIL_FROM
-    ? nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: Number(process.env.SMTP_PORT) === 465,
-        auth: process.env.SMTP_USER
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-          : undefined,
-        connectionTimeout: 10000,
-        socketTimeout: 15000,
-        // Form content is untrusted. It is escaped in the HTML template
-        // (server/email.mjs) and Nodemailer must never resolve local files or
-        // remote URLs from it.
-        disableFileAccess: true,
-        disableUrlAccess: true,
-      })
-    : null;
+const transport = createMailTransport();
+// Report the email setup once at startup so hosting logs show why mail is
+// not arriving (missing setting, wrong Gmail password, blocked SMTP port…).
+{
+  const missing = missingMailSettings();
+  const anySet = ["SMTP_HOST", "SMTP_USER", "MAIL_FROM", "NOTIFY_EMAIL"].some(
+    (name) => process.env[name]?.trim(),
+  );
+  for (const warning of mailWarnings()) console.warn(`Email warning: ${warning}`);
+  if (transport)
+    transport
+      .verify()
+      .then(() => console.log(`Email: SMTP login OK (${mailSummary()}).`))
+      .catch((error) =>
+        console.error(`Email: SMTP check failed. ${describeMailError(error)}`),
+      );
+  else if (anySet)
+    console.error(
+      `Email: notifications are OFF because these settings are empty: ${missing.join(", ")}.`,
+    );
+  else console.log("Email: notifications are off (no SMTP settings).");
+}
 async function notify(record) {
   if (transport) {
-    try {
-      const origin = process.env.PUBLIC_ORIGIN?.replace(/\/$/, "");
-      await transport.sendMail({
+    const origin = process.env.PUBLIC_ORIGIN?.replace(/\/$/, "");
+    // The team alert and the visitor copy are sent independently, so a bad
+    // visitor address never stops the sales team from hearing about a lead.
+    const [team, visitor] = await Promise.allSettled([
+      transport.sendMail({
         from: process.env.MAIL_FROM,
         to: process.env.NOTIFY_EMAIL,
         replyTo: record.email,
         ...teamEmail(record, origin),
-      });
-      await transport.sendMail({
+      }),
+      transport.sendMail({
         from: process.env.MAIL_FROM,
         to: record.email,
         ...visitorEmail(record, origin),
-      });
-      db.prepare("UPDATE enquiries SET notification_status=? WHERE id=?").run(
-        "sent",
-        record.id,
-      );
-    } catch {
-      db.prepare("UPDATE enquiries SET notification_status=? WHERE id=?").run(
-        "failed",
-        record.id,
-      );
+      }),
+    ]);
+    const status =
+      team.status === "rejected"
+        ? "failed"
+        : visitor.status === "rejected"
+          ? "partial"
+          : "sent";
+    db.prepare("UPDATE enquiries SET notification_status=? WHERE id=?").run(
+      status,
+      record.id,
+    );
+    if (team.status === "rejected")
       console.error(
-        `Email notification failed for ${record.id}; enquiry remains saved.`,
+        `Email to team failed for ${record.id}; enquiry remains saved. ${describeMailError(team.reason)}`,
       );
-    }
+    if (visitor.status === "rejected")
+      console.error(
+        `Confirmation email to visitor failed for ${record.id}. ${describeMailError(visitor.reason)}`,
+      );
   }
   await notifyWhatsApp(record);
 }
@@ -277,6 +301,38 @@ async function notifyWhatsApp(record) {
     console.error(`WhatsApp notification failed for ${record.id}; enquiry remains saved.`);
   }
 }
+// Each chat turn costs an OpenAI call, so it has its own, tighter budget.
+const chatLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 40,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "You are sending messages too quickly. Please wait a few minutes." },
+});
+app.get("/api/chat", (_req, res) => res.json({ enabled: chatEnabled() }));
+app.post("/api/chat", chatLimiter, async (req, res) => {
+  if (!validCsrf(req))
+    return res
+      .status(403)
+      .json({ error: "Your chat session has expired. Please send your message again." });
+  if (!chatEnabled())
+    return res.status(503).json({
+      error: "The chat assistant is unavailable. Please use the contact form.",
+    });
+  const messages = cleanMessages(req.body?.messages);
+  if (!messages)
+    return res.status(422).json({
+      error: "Please keep messages under 1,500 characters. Long chats can continue on the contact form.",
+    });
+  try {
+    res.json(await askAssistant(messages));
+  } catch (err) {
+    console.error("Chat assistant error:", err.name === "TimeoutError" ? "timeout" : err.message);
+    res.status(502).json({
+      error: "The assistant could not answer just now. Please try again, or use the contact form.",
+    });
+  }
+});
 app.post("/api/enquiries", limiter, async (req, res) => {
   if (!validCsrf(req))
     return res.status(403).json({
@@ -320,6 +376,9 @@ app.post("/api/enquiries", limiter, async (req, res) => {
       error:
         "Please check your name, email, service, timeline and project description, and accept the privacy notice.",
     });
+  if (b.source !== undefined && b.source !== "form" && b.source !== "chat")
+    return res.status(422).json({ error: "Invalid enquiry source." });
+  record.source = b.source === "chat" ? "chat" : "form";
   const idempotency = req.get("Idempotency-Key") || "";
   if (!/^[0-9a-f-]{36}$/i.test(idempotency))
     return res
@@ -343,7 +402,7 @@ app.post("/api/enquiries", limiter, async (req, res) => {
   record.whatsappOptIn = b.whatsapp === "accepted";
   try {
     db.prepare(
-      "INSERT INTO enquiries (id,created_at,idempotency_key,payload_hash,name,email,company,phone,service,timeline,message,privacy_accepted,notification_status,whatsapp_opt_in) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO enquiries (id,created_at,idempotency_key,payload_hash,name,email,company,phone,service,timeline,message,privacy_accepted,notification_status,whatsapp_opt_in,source) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     ).run(
       record.id,
       new Date().toISOString(),
@@ -359,6 +418,7 @@ app.post("/api/enquiries", limiter, async (req, res) => {
       1,
       transport ? "pending" : "unconfigured",
       record.whatsappOptIn ? 1 : 0,
+      record.source,
     );
     res.status(201).json({ reference: record.id });
     void notify(record);

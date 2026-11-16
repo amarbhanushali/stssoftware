@@ -30,6 +30,8 @@ const paths = {
   database:
     "M3 5c0-4 18-4 18 0s-18 4-18 0Zm0 0v14c0 4 18 4 18 0V5M3 12c0 4 18 4 18 0",
   mail: "M2 4h20v16H2V4Zm0 0 10 9L22 4",
+  chat: "M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12ZM8 12h.01M12 12h.01M16 12h.01",
+  send: "m3 11 18-8-8 18-2-8-8-2Z",
 };
 function Icon({ name = "arrow", ...props }) {
   return (
@@ -1856,6 +1858,286 @@ function AnalyticsConsent() {
   if (!measurementId || consent !== null) return null;
   return <aside className="analytics-consent" aria-label="Analytics cookie choice"><p>We use optional Google Analytics to understand website visits and improve our services. It does not affect your enquiry.</p><div><button type="button" className="text-button" onClick={() => decide("denied")}>No thanks</button><button type="button" className="button" onClick={() => decide("accepted")}>Accept analytics</button></div></aside>;
 }
+const chatGreeting =
+  "Hi! I’m the Samarth Tech Software assistant. Tell me what you’d like to build or improve, and I’ll help you send the details to our team.";
+const chatTimelines = [
+  "As soon as possible",
+  "1–3 months",
+  "3–6 months",
+  "Exploring options",
+];
+// AI enquiry assistant. It only appears when the server has an OpenAI key.
+// The AI proposes a draft; the visitor reviews it and sends it through the
+// same /api/enquiries route as the contact form.
+function ChatAssistant() {
+  const [enabled, setEnabled] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState("");
+  const [draft, setDraft] = useState(null);
+  const [receipt, setReceipt] = useState("");
+  const csrf = useRef("");
+  const key = useRef("");
+  const logRef = useRef(null);
+  const inputRef = useRef(null);
+  const launcherRef = useRef(null);
+  const busy = status === "thinking" || status === "sending";
+  useEffect(() => {
+    fetch("/api/chat")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setEnabled(Boolean(d?.enabled)))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
+  }, [messages, draft, status, error]);
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+  async function post(url, body, headers = {}) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (!csrf.current || attempt > 0) {
+        const s = await fetch("/api/session");
+        if (!s.ok) throw Error("The assistant is unavailable. Please try again shortly.");
+        csrf.current = (await s.json()).token;
+      }
+      const r = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrf.current,
+          ...headers,
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.status === 403 && attempt === 0) continue;
+      if (!r.ok) throw Error(data.error || "Something went wrong. Please try again.");
+      return data;
+    }
+  }
+  async function send(e) {
+    e.preventDefault();
+    const text = input.trim();
+    if (!text || busy) return;
+    const next = [...messages, { role: "user", content: text }];
+    setMessages(next);
+    setInput("");
+    setDraft(null);
+    setError("");
+    setStatus("thinking");
+    try {
+      const data = await post("/api/chat", { messages: next.slice(-30) });
+      setMessages([...next, { role: "assistant", content: data.reply }]);
+      if (data.draft) {
+        key.current = crypto.randomUUID();
+        setDraft(data.draft);
+      }
+      setStatus("idle");
+    } catch (err) {
+      setMessages(messages);
+      setInput(text);
+      setError(err.message || "We could not connect. Please try again.");
+      setStatus("idle");
+    }
+  }
+  async function submitDraft(e) {
+    e.preventDefault();
+    if (busy) return;
+    const values = Object.fromEntries(new FormData(e.currentTarget));
+    setError("");
+    setStatus("sending");
+    try {
+      const data = await post(
+        "/api/enquiries",
+        { ...values, source: "chat" },
+        { "Idempotency-Key": key.current },
+      );
+      setReceipt(data.reference);
+      setDraft(null);
+      setStatus("sent");
+      if (window.gtag && window.localStorage.getItem("sts_analytics_consent") === "accepted")
+        window.gtag("event", "generate_lead", { service: values.service, method: "chat" });
+    } catch (err) {
+      setError(err.message || "Your enquiry could not be sent. Please try again.");
+      setStatus("idle");
+    }
+  }
+  function restart() {
+    setMessages([]);
+    setDraft(null);
+    setReceipt("");
+    setError("");
+    setInput("");
+    setStatus("idle");
+    inputRef.current?.focus();
+  }
+  function close() {
+    setOpen(false);
+    launcherRef.current?.focus();
+  }
+  if (!enabled) return null;
+  return (
+    <>
+      {open && (
+        <section
+          className="chat-panel"
+          role="dialog"
+          aria-label="Chat with Samarth Tech Software"
+          onKeyDown={(e) => e.key === "Escape" && close()}
+        >
+          <header className="chat-header">
+            <div>
+              <strong>Project assistant</strong>
+              <span>AI assistant · our team replies by email</span>
+            </div>
+            <button type="button" onClick={restart} className="chat-restart">
+              Start over
+            </button>
+            <button type="button" onClick={close} className="chat-close" aria-label="Close chat">
+              <Icon name="close" />
+            </button>
+          </header>
+          <div className="chat-log" ref={logRef} role="log" aria-live="polite">
+            <p className="chat-msg assistant">{chatGreeting}</p>
+            {messages.map((m, i) => (
+              <p key={i} className={`chat-msg ${m.role}`}>
+                {m.content}
+              </p>
+            ))}
+            {status === "thinking" && (
+              <p className="chat-msg assistant chat-typing" aria-label="Assistant is typing">
+                <span />
+                <span />
+                <span />
+              </p>
+            )}
+            {draft && (
+              <form className="chat-draft" onSubmit={submitDraft}>
+                <strong>Check your enquiry before sending</strong>
+                <label>
+                  Name *
+                  <input name="name" defaultValue={draft.name} required minLength={2} maxLength={100} autoComplete="name" />
+                </label>
+                <label>
+                  Email *
+                  <input name="email" type="email" defaultValue={draft.email} required maxLength={200} autoComplete="email" />
+                </label>
+                <label>
+                  Company
+                  <input name="company" defaultValue={draft.company} maxLength={150} autoComplete="organization" />
+                </label>
+                <label>
+                  Phone
+                  <input name="phone" type="tel" defaultValue={draft.phone} maxLength={30} autoComplete="tel" />
+                </label>
+                <label>
+                  Service *
+                  <select name="service" defaultValue={draft.service} required>
+                    {services.map((s) => (
+                      <option key={s.slug} value={s.slug}>
+                        {s.name}
+                      </option>
+                    ))}
+                    <option value="not-sure">I’m not sure yet</option>
+                  </select>
+                </label>
+                <label>
+                  Timeline *
+                  <select name="timeline" defaultValue={draft.timeline} required>
+                    {chatTimelines.map((t) => (
+                      <option key={t}>{t}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Requirement summary *
+                  <textarea name="message" defaultValue={draft.message} required minLength={20} maxLength={5000} rows={5} />
+                </label>
+                <div className="honeypot" aria-hidden="true">
+                  <label>
+                    Leave this empty
+                    <input name="website" tabIndex={-1} autoComplete="off" />
+                  </label>
+                </div>
+                <label className="checkbox-label">
+                  <input type="checkbox" name="privacy" value="accepted" required />
+                  <span>
+                    I agree to the{" "}
+                    <Link to="/privacy" target="_blank" rel="noopener">
+                      privacy notice
+                    </Link>{" "}
+                    and to being contacted about this enquiry. *
+                  </span>
+                </label>
+                <label className="checkbox-label">
+                  <input type="checkbox" name="whatsapp" value="accepted" />
+                  <span>Send me a WhatsApp confirmation too.</span>
+                </label>
+                <button className="button" type="submit" disabled={busy}>
+                  {status === "sending" ? "Sending…" : "Send to the STS team"}
+                  <Icon name="send" />
+                </button>
+              </form>
+            )}
+            {status === "sent" && (
+              <div className="chat-msg assistant chat-sent" role="status">
+                <Icon name="check" />
+                <span>
+                  Thank you, your enquiry has been sent. Your reference is{" "}
+                  <strong>{receipt}</strong>. We’ll reply by email, and a copy
+                  is on its way to your inbox.
+                </span>
+              </div>
+            )}
+            {error && (
+              <div className="form-error" role="alert">
+                {error}
+              </div>
+            )}
+          </div>
+          {status !== "sent" && (
+            <form className="chat-form" onSubmit={send}>
+              <label className="sr-only" htmlFor="chat-input">
+                Your message
+              </label>
+              <textarea
+                id="chat-input"
+                ref={inputRef}
+                rows={1}
+                value={input}
+                maxLength={1500}
+                placeholder="Type your message…"
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) send(e);
+                }}
+              />
+              <button type="submit" className="chat-send" disabled={busy || !input.trim()} aria-label="Send message">
+                <Icon name="send" />
+              </button>
+            </form>
+          )}
+          <p className="chat-note">
+            AI replies can be wrong. Please don’t share passwords or payment details.
+          </p>
+        </section>
+      )}
+      <button
+        ref={launcherRef}
+        type="button"
+        className="chat-launcher"
+        aria-expanded={open}
+        onClick={() => (open ? close() : setOpen(true))}
+      >
+        <Icon name={open ? "close" : "chat"} />
+        <span>{open ? "Close chat" : "Chat with us"}</span>
+      </button>
+    </>
+  );
+}
 export default function App() {
   return (
     <>
@@ -1885,6 +2167,7 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
+      <ChatAssistant />
     </>
   );
 }
