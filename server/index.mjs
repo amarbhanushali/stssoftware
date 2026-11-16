@@ -16,7 +16,14 @@ import {
   createHash,
   timingSafeEqual,
 } from "node:crypto";
-import { mkdirSync, existsSync, readFileSync } from "node:fs";
+import {
+  mkdirSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  linkSync,
+  unlinkSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -24,6 +31,7 @@ import {
   getMetadata,
   getStructuredData,
   getLlmsText,
+  hubspotTracking,
 } from "../src/metadata.js";
 import { teamEmail, visitorEmail } from "./email.mjs";
 import { askAssistant, chatEnabled, cleanMessages } from "./chat.mjs";
@@ -68,7 +76,35 @@ for (const column of [
     if (!String(error.message).includes("duplicate column name")) throw error;
   }
 }
-const secret = randomBytes(32);
+// The CSRF signing secret must be the same in every process: Hostinger runs
+// several copies of the app, and a token issued by one copy has to validate
+// in the others. It is created once in the data folder (never in git).
+// Writing to a temporary file and hard-linking it into place is atomic, so
+// two processes starting together can never read a half-written secret.
+function loadSecret() {
+  const file = path.join(dataDir, "csrf-secret");
+  if (!existsSync(file)) {
+    const temp = `${file}.${process.pid}.${randomUUID()}.tmp`;
+    writeFileSync(temp, randomBytes(32).toString("hex"), { mode: 0o600 });
+    try {
+      linkSync(temp, file);
+    } catch (error) {
+      if (error.code !== "EEXIST") throw error;
+    } finally {
+      unlinkSync(temp);
+    }
+  }
+  const value = readFileSync(file, "utf8").trim();
+  if (!/^[0-9a-f]{64}$/.test(value))
+    throw new Error(`${file} is not a valid secret; delete it and restart.`);
+  return Buffer.from(value, "hex");
+}
+const secret = loadSecret();
+console.log(`Data: enquiries are stored in ${dataDir}`);
+if (/[\\/]hbuilds[\\/]versions[\\/]/.test(dataDir))
+  console.error(
+    "Data: WARNING the data folder is inside this deployment's build folder, so enquiries may not survive the next deploy. Set DATA_DIR to a folder outside it, for example /home/<user>/sts-data.",
+  );
 const app = express();
 app.disable("x-powered-by");
 // Behind Caddy/Nginx/Hostinger every request arrives from the proxy, so the
@@ -77,16 +113,29 @@ app.disable("x-powered-by");
 const trustProxy = Number(process.env.TRUST_PROXY || 0);
 if (Number.isInteger(trustProxy) && trustProxy > 0)
   app.set("trust proxy", trustProxy);
+// HubSpot tracking runs only on the live HTTPS site, so local development and
+// tests never send visits to HubSpot. Only the tracking domains from HubSpot's
+// CSP guide are allowed. hs-banner.com carries HubSpot's consent API (its
+// banner itself is switched off in the page, the site's own banner asks).
+// HubSpot chat, pop-up forms and "collected forms" stay blocked: the site has
+// its own chat and enquiry form, which already sync to HubSpot server-side.
+const hubspotTrackingOn = /^https:\/\//.test(process.env.PUBLIC_ORIGIN || "");
+const hubspotScripts = hubspotTrackingOn
+  ? ["https://*.hs-scripts.com", "https://*.hs-analytics.net", "https://*.hs-banner.com"]
+  : [];
+const hubspotBeacons = hubspotTrackingOn
+  ? ["https://*.hubspot.com", "https://*.hs-banner.com"]
+  : [];
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.googletagmanager.com"] : [])],
+        scriptSrc: ["'self'", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.googletagmanager.com"] : []), ...hubspotScripts],
         styleSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.googletagmanager.com"] : [])],
+        imgSrc: ["'self'", "data:", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.googletagmanager.com"] : []), ...hubspotBeacons],
         fontSrc: ["'self'"],
-        connectSrc: ["'self'", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.google-analytics.com", "https://region1.google-analytics.com"] : [])],
+        connectSrc: ["'self'", ...(process.env.GOOGLE_ANALYTICS_ID ? ["https://www.google-analytics.com", "https://region1.google-analytics.com"] : []), ...hubspotBeacons],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"],
@@ -584,6 +633,8 @@ if (existsSync(path.join(dist, "index.html"))) {
       head.push(`<meta property="og:type" content="website"/><meta property="og:site_name" content="Samarth Tech Software"/><meta property="og:title" content="${title}"/><meta property="og:description" content="${escape(metadata.description)}"/><meta property="og:url" content="${escape(pageUrl)}"/><meta property="og:image" content="${escape(imageUrl)}"/><meta property="og:locale" content="en_IN"/><meta property="og:image:alt" content="Samarth Tech Software logo"/><meta name="twitter:card" content="summary"/><meta name="twitter:title" content="${title}"/><meta name="twitter:description" content="${escape(metadata.description)}"/><meta name="twitter:image" content="${escape(imageUrl)}"/><script type="application/ld+json">${structuredData}</script>`);
       if (process.env.GOOGLE_SITE_VERIFICATION)
         head.push(`<meta name="google-site-verification" content="${escape(process.env.GOOGLE_SITE_VERIFICATION)}"/>`);
+      if (hubspotTrackingOn)
+        head.push(`<meta name="hubspot-tracking" content="${escape(`${hubspotTracking.scriptHost}/${hubspotTracking.portalId}`)}"/>`);
       if (/^G-[A-Z0-9]+$/i.test(process.env.GOOGLE_ANALYTICS_ID || ""))
         head.push(`<meta name="google-analytics-id" content="${escape(process.env.GOOGLE_ANALYTICS_ID)}"/>`);
     }

@@ -10,6 +10,13 @@ export const company = {
     ["Facebook", "https://www.facebook.com/ststechsoftware"],
   ],
 };
+// HubSpot tracking code (public values from HubSpot's embed snippet). It is
+// loaded only on the live HTTPS site and only after the visitor accepts
+// analytics; server/index.mjs adds HubSpot's domains to the CSP.
+export const hubspotTracking = {
+  scriptHost: "js-na2.hs-scripts.com",
+  portalId: "248022319",
+};
 const baseDescription =
   "Samarth Tech Software is a software company in Nashik, Maharashtra. We build websites, custom software, mobile apps and AI automation for businesses across India.";
 const page = (title, description) => ({ title, description });

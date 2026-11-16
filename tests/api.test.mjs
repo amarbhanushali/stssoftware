@@ -82,41 +82,45 @@ const payload = {
   privacy: "accepted",
   website: "",
 };
-before(async () => {
-  const openAIPort = await startMockOpenAI();
-  child = spawn(process.execPath, ["server/index.mjs"], {
-    env: {
-      ...process.env,
-      PORT: "0",
-      HOST: "127.0.0.1",
-      DATA_DIR: data,
-      SMTP_HOST: "",
-      PUBLIC_ORIGIN: "http://localhost:3001",
-      OPENAI_API_KEY: "test-key",
-      OPENAI_BASE_URL: `http://127.0.0.1:${openAIPort}/v1`,
-      HUBSPOT_ACCESS_TOKEN: "hs-test-token",
-      HUBSPOT_BASE_URL: `http://127.0.0.1:${openAIPort}`,
-    },
+let serverEnv;
+function startServer(env) {
+  const proc = spawn(process.execPath, ["server/index.mjs"], {
+    env,
     stdio: ["ignore", "pipe", "pipe"],
   });
-  await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const timeout = setTimeout(
       () => reject(Error("Test server did not start")),
       15000,
     );
-    child.once("error", reject);
-    child.stdout.on("data", (buffer) => {
+    proc.once("error", reject);
+    proc.stdout.on("data", (buffer) => {
       const match = buffer.toString().match(/http:\/\/127\.0\.0\.1:(\d+)/);
       if (match) {
-        base = match[0];
         clearTimeout(timeout);
-        resolve();
+        resolve({ proc, url: match[0] });
       }
     });
-    child.stderr.on("data", (buffer) => {
+    proc.stderr.on("data", (buffer) => {
       if (buffer.toString().includes("Error")) console.error(buffer.toString());
     });
   });
+}
+before(async () => {
+  const openAIPort = await startMockOpenAI();
+  serverEnv = {
+    ...process.env,
+    PORT: "0",
+    HOST: "127.0.0.1",
+    DATA_DIR: data,
+    SMTP_HOST: "",
+    PUBLIC_ORIGIN: "http://localhost:3001",
+    OPENAI_API_KEY: "test-key",
+    OPENAI_BASE_URL: `http://127.0.0.1:${openAIPort}/v1`,
+    HUBSPOT_ACCESS_TOKEN: "hs-test-token",
+    HUBSPOT_BASE_URL: `http://127.0.0.1:${openAIPort}`,
+  };
+  ({ proc: child, url: base } = await startServer(serverEnv));
   const r = await fetch(`${base}/api/session`);
   cookie = r.headers.get("set-cookie").split(";")[0];
   token = (await r.json()).token;
@@ -228,13 +232,22 @@ test("saves durably and prevents duplicate records", async () => {
 function chat(messages, csrf = token) {
   return fetch(`${base}/api/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: cookie, "X-CSRF-Token": csrf },
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: cookie,
+      "X-CSRF-Token": csrf,
+    },
     body: JSON.stringify({ messages }),
   });
 }
 test("chat assistant requires CSRF and validates the transcript", async () => {
-  assert.deepEqual(await (await fetch(base + "/api/chat")).json(), { enabled: true });
-  assert.equal((await chat([{ role: "user", content: "Hi" }], "bad")).status, 403);
+  assert.deepEqual(await (await fetch(base + "/api/chat")).json(), {
+    enabled: true,
+  });
+  assert.equal(
+    (await chat([{ role: "user", content: "Hi" }], "bad")).status,
+    403,
+  );
   for (const messages of [
     [],
     "hello",
@@ -248,11 +261,16 @@ test("chat assistant requires CSRF and validates the transcript", async () => {
 test("chat assistant replies through OpenAI with the key kept server-side", async () => {
   const r = await chat([{ role: "user", content: "What do you build?" }]);
   assert.equal(r.status, 200);
-  assert.deepEqual(await r.json(), { reply: "<b>Hello</b> from the assistant." });
+  assert.deepEqual(await r.json(), {
+    reply: "<b>Hello</b> from the assistant.",
+  });
   const sent = openAIRequests.at(-1);
   assert.equal(sent.auth, "Bearer test-key");
   assert.equal(sent.body.messages[0].role, "system");
-  assert.match(sent.body.messages[0].content, /Samarth Tech Software[\s\S]*Never quote prices/);
+  assert.match(
+    sent.body.messages[0].content,
+    /Samarth Tech Software[\s\S]*Never quote prices/,
+  );
   assert.equal(sent.body.tools[0].function.name, "prepare_enquiry");
   const failed = await chat([{ role: "user", content: "please fail" }]);
   assert.equal(failed.status, 502);
@@ -264,10 +282,19 @@ test("chat drafts are sanitised and sent as chat enquiries", async () => {
   assert.equal(draft.email, "chat@example.comBcc:evil@example.com");
   assert.equal(draft.service, "not-sure");
   assert.equal(draft.timeline, "Exploring options");
-  const saved = await send({ ...payload, ...draft, email: "chat@example.com", source: "chat" });
+  const saved = await send({
+    ...payload,
+    ...draft,
+    email: "chat@example.com",
+    source: "chat",
+  });
   assert.equal(saved.status, 201);
-  const db = new DatabaseSync(path.join(data, "enquiries.sqlite"), { readOnly: true });
-  const row = db.prepare("SELECT source FROM enquiries WHERE email=?").get("chat@example.com");
+  const db = new DatabaseSync(path.join(data, "enquiries.sqlite"), {
+    readOnly: true,
+  });
+  const row = db
+    .prepare("SELECT source FROM enquiries WHERE email=?")
+    .get("chat@example.com");
   db.close();
   assert.equal(row.source, "chat");
   assert.equal((await send({ ...payload, source: "admin" })).status, 422);
@@ -313,27 +340,43 @@ test("emits structured data for local search", async () => {
   const types = json["@graph"].flatMap((node) => node["@type"]);
   for (const type of ["Organization", "BreadcrumbList", "Service", "FAQPage"])
     assert.ok(types.includes(type), type);
-  const org = json["@graph"].find((node) => [node["@type"]].flat().includes("Organization"));
+  const org = json["@graph"].find((node) =>
+    [node["@type"]].flat().includes("Organization"),
+  );
   assert.equal(org.email, "sales@stssoftware.in");
   assert.deepEqual(org.sameAs, [
     "https://www.linkedin.com/company/samarthtechsoftware",
     "https://www.facebook.com/ststechsoftware",
   ]);
-  assert.match(html, /href="https:\/\/www\.linkedin\.com\/company\/samarthtechsoftware"/);
+  assert.match(
+    html,
+    /href="https:\/\/www\.linkedin\.com\/company\/samarthtechsoftware"/,
+  );
   assert.match(html, /href="https:\/\/www\.facebook\.com\/ststechsoftware"/);
   assert.match(html, /href="mailto:sales@stssoftware\.in"/);
 });
 
 test("rejects scanner probes and sets hardening headers", async () => {
-  for (const probe of ["/wp-login.php", "/.env", "/.git/config", "/admin.php"]) {
+  for (const probe of [
+    "/wp-login.php",
+    "/.env",
+    "/.git/config",
+    "/admin.php",
+  ]) {
     const r = await fetch(base + probe);
     assert.equal(r.status, 404, probe);
     assert.doesNotMatch(await r.text(), /<html/);
   }
   const r = await fetch(base + "/");
   assert.match(r.headers.get("permissions-policy"), /camera=\(\)/);
-  assert.match(r.headers.get("content-security-policy"), /frame-ancestors 'none'/);
-  assert.doesNotMatch(r.headers.get("content-security-policy"), /unsafe-inline/);
+  assert.match(
+    r.headers.get("content-security-policy"),
+    /frame-ancestors 'none'/,
+  );
+  assert.doesNotMatch(
+    r.headers.get("content-security-policy"),
+    /unsafe-inline/,
+  );
   const api = await fetch(base + "/api/health");
   assert.equal(api.headers.get("x-robots-tag"), "noindex, nofollow");
 });
@@ -341,8 +384,11 @@ test("rejects scanner probes and sets hardening headers", async () => {
 test("every published service can be selected in an enquiry", async () => {
   const { services } = await import("../src/data.js");
   const source = readFileSync("server/index.mjs", "utf8");
-  const allowList = source.match(/allowedServices = new Set\(\[([\s\S]*?)\]\)/)[1];
-  for (const { slug } of services) assert.match(allowList, new RegExp(`"${slug}"`), slug);
+  const allowList = source.match(
+    /allowedServices = new Set\(\[([\s\S]*?)\]\)/,
+  )[1];
+  for (const { slug } of services)
+    assert.match(allowList, new RegExp(`"${slug}"`), slug);
   const html = await (await fetch(base + "/services/php-security")).text();
   assert.match(html, /<title>PHP Security &amp; Server Hardening in Nashik/);
 });
@@ -356,11 +402,17 @@ test("enquiry emails use the branded template and escape form content", async ()
     message: "Line one <script>alert(1)</script>\nLine two & more",
   };
   const origin = "https://stssoftware.in";
-  for (const mail of [teamEmail(record, origin), visitorEmail(record, origin)]) {
+  for (const mail of [
+    teamEmail(record, origin),
+    visitorEmail(record, origin),
+  ]) {
     assert.match(mail.html, /Samarth Tech Software/);
     assert.match(mail.html, /sales@stssoftware\.in/);
     assert.match(mail.html, /Custom Software Development/);
-    assert.match(mail.html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;<br>Line two &amp; more/);
+    assert.match(
+      mail.html,
+      /&lt;script&gt;alert\(1\)&lt;\/script&gt;<br>Line two &amp; more/,
+    );
     assert.match(mail.html, /&lt;img src=x onerror=&quot;alert\(1\)&quot;&gt;/);
     assert.doesNotMatch(mail.html, /<script|<img src=x/);
     assert.match(mail.text, /Reference: STS-TEST/);
@@ -368,10 +420,22 @@ test("enquiry emails use the branded template and escape form content", async ()
   }
   assert.match(teamEmail(record, origin).html, /untrusted/);
   for (const mail of [teamEmail(record, origin), visitorEmail(record, origin)])
-    assert.match(mail.html, /linkedin\.com\/company\/samarthtechsoftware[\s\S]*facebook\.com\/ststechsoftware/);
-  assert.match(visitorEmail(record, origin).text, /LinkedIn: https:\/\/www\.linkedin\.com/);
-  assert.match(visitorEmail(record, origin).html, /src="https:\/\/stssoftware\.in\/sts-logo\.png"/);
-  assert.doesNotMatch(visitorEmail(record, "http://localhost:3001").html, /<img/);
+    assert.match(
+      mail.html,
+      /linkedin\.com\/company\/samarthtechsoftware[\s\S]*facebook\.com\/ststechsoftware/,
+    );
+  assert.match(
+    visitorEmail(record, origin).text,
+    /LinkedIn: https:\/\/www\.linkedin\.com/,
+  );
+  assert.match(
+    visitorEmail(record, origin).html,
+    /src="https:\/\/stssoftware\.in\/sts-logo\.png"/,
+  );
+  assert.doesNotMatch(
+    visitorEmail(record, "http://localhost:3001").html,
+    /<img/,
+  );
 });
 
 test("articles and service pages link to each other", async () => {
@@ -383,7 +447,9 @@ test("articles and service pages link to each other", async () => {
   }
   const service = await (await fetch(base + "/services/php-security")).text();
   assert.match(service, /href="\/insights\/laravel-security-2026"/);
-  const article = await (await fetch(base + "/insights/laravel-security-2026")).text();
+  const article = await (
+    await fetch(base + "/insights/laravel-security-2026")
+  ).text();
   assert.match(article, /href="\/services\/php-security"/);
   assert.equal(article.match(/<h1[\s>]/g).length, 1);
 });
@@ -392,23 +458,37 @@ test("article figures are valid and server-rendered", async () => {
   const { articles } = await import("../src/data.js");
   for (const a of articles)
     for (const f of a.figures || []) {
-      assert.ok(Number.isInteger(f.after) && f.after >= 0 && f.after < a.sections.length, `${a.slug}: ${f.title}`);
+      assert.ok(
+        Number.isInteger(f.after) &&
+          f.after >= 0 &&
+          f.after < a.sections.length,
+        `${a.slug}: ${f.title}`,
+      );
       assert.ok(f.title && f.caption && f.rows.length, `${a.slug}: ${f.title}`);
       for (const r of f.rows) {
         assert.ok(["slow", "fast"].includes(r.tone), `${a.slug}: ${r.label}`);
         assert.ok(r.steps.length >= 2, `${a.slug}: ${r.label}`);
       }
     }
-  const html = await (await fetch(base + "/insights/ai-agents-faster-business-processes")).text();
+  const html = await (
+    await fetch(base + "/insights/ai-agents-faster-business-processes")
+  ).text();
   assert.match(html, /<figure class="flow-figure">/);
   assert.match(html, /Where the time goes in one order/);
-  assert.match(html, /<span class="flow-wait">waits<\/span>Accounts checks balance<\/li>/);
-  assert.match(html, /<ol class="flow-steps" role="list" aria-labelledby="[^"]+">/);
+  assert.match(
+    html,
+    /<span class="flow-wait">waits<\/span>Accounts checks balance<\/li>/,
+  );
+  assert.match(
+    html,
+    /<ol class="flow-steps" role="list" aria-labelledby="[^"]+">/,
+  );
   assert.equal(html.match(/<h1[\s>]/g).length, 1);
 });
 
 test("email setup problems are diagnosed without leaking secrets", async () => {
-  const { missingMailSettings, describeMailError, createMailTransport } = await import("../server/mail.mjs");
+  const { missingMailSettings, describeMailError, createMailTransport } =
+    await import("../server/mail.mjs");
   const gmail = {
     SMTP_HOST: "smtp.gmail.com",
     SMTP_PORT: "587",
@@ -418,21 +498,42 @@ test("email setup problems are diagnosed without leaking secrets", async () => {
     NOTIFY_EMAIL: "sales@example.com",
   };
   assert.deepEqual(missingMailSettings(gmail), []);
-  assert.deepEqual(missingMailSettings({ ...gmail, NOTIFY_EMAIL: " " }), ["NOTIFY_EMAIL"]);
-  assert.deepEqual(missingMailSettings({ SMTP_HOST: "smtp.gmail.com" }), ["MAIL_FROM", "NOTIFY_EMAIL", "SMTP_USER", "SMTP_PASS"]);
+  assert.deepEqual(missingMailSettings({ ...gmail, NOTIFY_EMAIL: " " }), [
+    "NOTIFY_EMAIL",
+  ]);
+  assert.deepEqual(missingMailSettings({ SMTP_HOST: "smtp.gmail.com" }), [
+    "MAIL_FROM",
+    "NOTIFY_EMAIL",
+    "SMTP_USER",
+    "SMTP_PASS",
+  ]);
   assert.equal(createMailTransport({ ...gmail, MAIL_FROM: "" }), null);
   const transport = createMailTransport(gmail);
   assert.equal(transport.options.auth.pass, "abcdefghijklmnop");
   assert.equal(transport.options.disableFileAccess, true);
   assert.equal(transport.options.disableUrlAccess, true);
-  const auth = describeMailError({ code: "EAUTH", responseCode: 535, command: "AUTH PLAIN" }, gmail);
+  const auth = describeMailError(
+    { code: "EAUTH", responseCode: 535, command: "AUTH PLAIN" },
+    gmail,
+  );
   assert.match(auth, /App Password/);
   assert.doesNotMatch(auth, /abcd|efgh/);
-  assert.match(describeMailError({ code: "ETIMEDOUT" }, gmail), /block outgoing SMTP/);
-  assert.match(describeMailError({ code: "EENVELOPE", responseCode: 553 }, gmail), /MAIL_FROM/);
+  assert.match(
+    describeMailError({ code: "ETIMEDOUT" }, gmail),
+    /block outgoing SMTP/,
+  );
+  assert.match(
+    describeMailError({ code: "EENVELOPE", responseCode: 553 }, gmail),
+    /MAIL_FROM/,
+  );
   const { mailWarnings } = await import("../server/mail.mjs");
   assert.deepEqual(mailWarnings(gmail), []);
-  const live = { ...gmail, SMTP_USER: "sales@stssoftware.in", MAIL_FROM: "Samarth Tech Software <info@stssoftware.in>", NOTIFY_EMAIL: "Sales@stssoftware.in" };
+  const live = {
+    ...gmail,
+    SMTP_USER: "sales@stssoftware.in",
+    MAIL_FROM: "Samarth Tech Software <info@stssoftware.in>",
+    NOTIFY_EMAIL: "Sales@stssoftware.in",
+  };
   const warnings = mailWarnings(live);
   assert.equal(warnings.length, 2);
   assert.match(warnings[0], /Send mail as/);
@@ -444,7 +545,9 @@ test("enquiries are saved to HubSpot as a contact with an escaped note", async (
   await new Promise((resolve) => setTimeout(resolve, 300));
   assert.ok(hubspotRequests.every((r) => r.auth === "Bearer hs-test-token"));
   const upsert = hubspotRequests.find(
-    (r) => r.url.includes("/batch/upsert") && r.body.inputs[0].id === "chat@example.com",
+    (r) =>
+      r.url.includes("/batch/upsert") &&
+      r.body.inputs[0].id === "chat@example.com",
   );
   assert.ok(upsert, "contact upsert sent");
   assert.equal(upsert.body.inputs[0].idProperty, "email");
@@ -452,12 +555,25 @@ test("enquiries are saved to HubSpot as a contact with an escaped note", async (
   const note = hubspotRequests.find((r) => r.url === "/crm/v3/objects/notes");
   assert.equal(note.body.associations[0].to.id, "901");
   assert.equal(note.body.associations[0].types[0].associationTypeId, 202);
-  const db = new DatabaseSync(path.join(data, "enquiries.sqlite"), { readOnly: true });
-  const row = db.prepare("SELECT hubspot_contact_id, hubspot_status FROM enquiries WHERE email=?").get("chat@example.com");
+  const db = new DatabaseSync(path.join(data, "enquiries.sqlite"), {
+    readOnly: true,
+  });
+  const row = db
+    .prepare(
+      "SELECT hubspot_contact_id, hubspot_status FROM enquiries WHERE email=?",
+    )
+    .get("chat@example.com");
   db.close();
-  assert.deepEqual({ ...row }, { hubspot_contact_id: "901", hubspot_status: "synced" });
+  assert.deepEqual(
+    { ...row },
+    { hubspot_contact_id: "901", hubspot_status: "synced" },
+  );
   const { enquiryNote } = await import("../server/hubspot.mjs");
-  const html = enquiryNote({ ...payload, id: "STS-X", message: "<script>alert(1)</script>" });
+  const html = enquiryNote({
+    ...payload,
+    id: "STS-X",
+    message: "<script>alert(1)</script>",
+  });
   assert.match(html, /&lt;script&gt;/);
   assert.doesNotMatch(html, /<script/);
 });
@@ -471,10 +587,20 @@ test("follow-up emails go once, within 24 hours, in business hours", async () =>
   const now = new Date("2026-11-16T05:30:00Z"); // 11:00 IST
   const hoursAgo = (h) => new Date(now.getTime() - h * 3600000).toISOString();
   const add = (id, age, contact = null) =>
-    db.prepare("INSERT INTO enquiries VALUES (?,?,?,?,?,?,?,?,?,0,?,NULL,NULL)").run(
-      id, hoursAgo(age), "Lead <b>", `${id}@example.com`, "", "", "website-development",
-      "1–3 months", "We need a new website for our shop.", contact,
-    );
+    db
+      .prepare("INSERT INTO enquiries VALUES (?,?,?,?,?,?,?,?,?,0,?,NULL,NULL)")
+      .run(
+        id,
+        hoursAgo(age),
+        "Lead <b>",
+        `${id}@example.com`,
+        "",
+        "",
+        "website-development",
+        "1–3 months",
+        "We need a new website for our shop.",
+        contact,
+      );
   add("STS-DUE", 7);
   add("STS-NEW", 2);
   add("STS-OLD", 30);
@@ -495,22 +621,99 @@ test("follow-up emails go once, within 24 hours, in business hours", async () =>
     replyTo: "sales@stssoftware.in",
     log: { error() {} },
   });
-  assert.deepEqual(await followUps.run(new Date("2026-11-16T17:00:00Z")), [], "22:30 IST: waits");
+  assert.deepEqual(
+    await followUps.run(new Date("2026-11-16T17:00:00Z")),
+    [],
+    "22:30 IST: waits",
+  );
   const results = await followUps.run(now);
   assert.deepEqual(results.map((r) => `${r.id}:${r.status}`).sort(), [
     "STS-CALLED:skipped-contacted",
     "STS-DUE:sent",
     "STS-HSNEW:sent",
   ]);
-  assert.deepEqual(sent.map((m) => m.to).sort(), ["STS-DUE@example.com", "STS-HSNEW@example.com"]);
+  assert.deepEqual(sent.map((m) => m.to).sort(), [
+    "STS-DUE@example.com",
+    "STS-HSNEW@example.com",
+  ]);
   assert.equal(sent[0].replyTo, "sales@stssoftware.in");
   assert.match(sent[0].subject, /A few quick questions/);
   assert.match(sent[0].html, /Do you already have a website or domain/);
   assert.match(sent[0].html, /Hello Lead &lt;b&gt;/);
-  assert.deepEqual(notes.map(([id]) => id), ["c-new"]);
+  assert.deepEqual(
+    notes.map(([id]) => id),
+    ["c-new"],
+  );
   assert.deepEqual(await followUps.run(now), [], "never sent twice");
-  assert.equal(db.prepare("SELECT followup_status FROM enquiries WHERE id='STS-NEW'").get().followup_status, null);
-  assert.equal(createFollowUps({ db, transport: null, delayHours: 6 }).enabled, false);
-  assert.equal(createFollowUps({ db, transport: {}, delayHours: 30 }).enabled, false);
+  assert.equal(
+    db.prepare("SELECT followup_status FROM enquiries WHERE id='STS-NEW'").get()
+      .followup_status,
+    null,
+  );
+  assert.equal(
+    createFollowUps({ db, transport: null, delayHours: 6 }).enabled,
+    false,
+  );
+  assert.equal(
+    createFollowUps({ db, transport: {}, delayHours: 30 }).enabled,
+    false,
+  );
   db.close();
+});
+
+test("every app process accepts the same CSRF token", async () => {
+  // Hostinger runs several copies of the app; a token from one must work in all.
+  const secret = readFileSync(path.join(data, "csrf-secret"), "utf8");
+  assert.match(secret, /^[0-9a-f]{64}$/);
+  const second = await startServer(serverEnv);
+  try {
+    const r = await fetch(`${second.url}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: cookie,
+        "X-CSRF-Token": token,
+      },
+      body: JSON.stringify({
+        messages: [{ role: "user", content: "Hello from another process" }],
+      }),
+    });
+    assert.equal(r.status, 200);
+    assert.equal(
+      readFileSync(path.join(data, "csrf-secret"), "utf8"),
+      secret,
+      "secret unchanged",
+    );
+  } finally {
+    const done = new Promise((resolve) => second.proc.once("exit", resolve));
+    second.proc.kill();
+    await done;
+  }
+});
+
+test("HubSpot tracking loads only on the HTTPS site, with only its tracking domains", async () => {
+  const local = await fetch(base + "/");
+  assert.doesNotMatch(local.headers.get("content-security-policy"), /hs-scripts|hubspot/);
+  assert.doesNotMatch(await local.text(), /hubspot-tracking/);
+  const live = await startServer({ ...serverEnv, PUBLIC_ORIGIN: "https://stssoftware.in" });
+  try {
+    const r = await fetch(`${live.url}/`);
+    const csp = r.headers.get("content-security-policy");
+    assert.match(
+      csp,
+      /script-src 'self' https:\/\/\*\.hs-scripts\.com https:\/\/\*\.hs-analytics\.net https:\/\/\*\.hs-banner\.com;/,
+    );
+    assert.match(csp, /img-src [^;]*https:\/\/\*\.hubspot\.com/);
+    assert.match(csp, /connect-src [^;]*https:\/\/\*\.hs-banner\.com/);
+    // Chat, pop-up forms and collected forms (which would capture the enquiry
+    // form a second time) stay blocked.
+    assert.doesNotMatch(csp, /usemessages|hsforms|hscollectedforms|hsleadflows|unsafe-inline/);
+    const html = await r.text();
+    assert.match(html, /<meta name="hubspot-tracking" content="js-na2\.hs-scripts\.com\/248022319"\/>/);
+    assert.doesNotMatch(html, /<script[^>]*hs-scripts/, "loaded only after consent, from code");
+  } finally {
+    const done = new Promise((resolve) => live.proc.once("exit", resolve));
+    live.proc.kill();
+    await done;
+  }
 });

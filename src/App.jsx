@@ -33,6 +33,24 @@ const paths = {
   chat: "M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12ZM8 12h.01M12 12h.01M16 12h.01",
   send: "m3 11 18-8-8 18-2-8-8-2Z",
 };
+// Analytics consent. "v2" because the choice now covers HubSpot as well as
+// Google Analytics, so visitors who only agreed to Google Analytics are asked
+// again.
+const consentKey = "sts_analytics_consent_v2";
+const analyticsAllowed = () => {
+  try {
+    return window.localStorage.getItem(consentKey) === "accepted";
+  } catch {
+    return false;
+  }
+};
+// Links the visitor's HubSpot browsing history to the contact the server
+// creates for their enquiry. Only after consent, and only the email address.
+function hubspotIdentify(email) {
+  if (!window.stsHubSpotLoaded || !analyticsAllowed() || !email) return;
+  window._hsq.push(["identify", { email }]);
+  window._hsq.push(["trackPageView"]);
+}
 function Icon({ name = "arrow", ...props }) {
   return (
     <svg
@@ -1413,11 +1431,12 @@ function Consultation() {
       }
       setReceipt(data.reference);
       setStatus("success");
-      if (window.gtag && window.localStorage.getItem("sts_analytics_consent") === "accepted")
+      if (window.gtag && analyticsAllowed())
         window.gtag("event", "generate_lead", {
           service: values.service,
           timeline: values.timeline,
         });
+      hubspotIdentify(values.email);
       formRef.current?.reset();
     } catch (err) {
       setError(
@@ -1732,15 +1751,27 @@ function Policy({ terms = false }) {
                 contact you about the project. If email notifications are
                 configured, those details are sent to the company’s enquiry
                 mailbox through its email provider. The form does not subscribe
-                you to marketing.
+                you to marketing. Enquiry details are also saved in the
+                company’s HubSpot customer relationship management (CRM)
+                account so the team can follow up, and you may receive one
+                follow-up email asking for more details about your request.
+              </p>
+              <h2>Chat assistant</h2>
+              <p>
+                If you use the website chat assistant, your messages are sent to
+                OpenAI to generate replies. Nothing from the chat is saved as an
+                enquiry until you review the summary and choose to send it.
+                Please do not share passwords or payment details in the chat.
               </p>
               <h2>Analytics and external services</h2>
               <p>
-                With your consent, this website uses Google Analytics to measure
-                aggregate page visits and navigation. It does not use advertising
-                trackers or session replay. You can decline analytics without
-                affecting the website or enquiry form. Website assets and fonts
-                are served locally.
+                With your consent, this website uses Google Analytics and
+                HubSpot tracking cookies to measure page visits and navigation.
+                If you accept these cookies and then send an enquiry, HubSpot
+                may link the pages you visited to your enquiry. The website does
+                not use advertising trackers or session replay. You can decline
+                analytics without affecting the website or enquiry form. Website
+                assets and fonts are served locally.
               </p>
               <h2>Questions about your information</h2>
               <p>
@@ -1825,9 +1856,53 @@ function PageState() {
 }
 function AnalyticsConsent() {
   const location = useLocation();
-  const [consent, setConsent] = useState(null);
+  // undefined = not read yet. The server cannot see the visitor's choice, so
+  // the first browser render must also show nothing (otherwise React reports
+  // a hydration mismatch); the stored choice is read in an effect.
+  const [consent, setConsent] = useState(undefined);
   const measurementId = typeof document === "undefined" ? "" : document.querySelector('meta[name="google-analytics-id"]')?.content || "";
-  useEffect(() => setConsent(window.localStorage.getItem("sts_analytics_consent")), []);
+  // "js-na2.hs-scripts.com/248022319", set by the server on the live site only.
+  const hubspot = typeof document === "undefined" ? "" : document.querySelector('meta[name="hubspot-tracking"]')?.content || "";
+  const hubspotPath = useRef("");
+  useEffect(() => {
+    try {
+      setConsent(window.localStorage.getItem(consentKey));
+    } catch {
+      setConsent(null);
+    }
+  }, []);
+  useEffect(() => {
+    if (consent !== "accepted" || !/^js(-[a-z0-9]+)?\.hs-scripts\.com\/\d+$/.test(hubspot)) return;
+    const path = location.pathname + location.search;
+    if (!window.stsHubSpotLoaded) {
+      // Same as HubSpot's embed snippet, loaded from code because the CSP
+      // blocks inline scripts. The script records the first page view itself.
+      window._hsq = window._hsq || [];
+      // The site's own banner already asked; hide HubSpot's banner and pass
+      // that choice to HubSpot (analytics only, never advertising). HubSpot
+      // does not remember this, so it is re-applied on every page load.
+      window.disableHubSpotCookieBanner = true;
+      window._hsp = window._hsp || [];
+      window._hsp.push([
+        "setHubSpotConsent",
+        { analytics: true, advertisement: false, functionality: true },
+      ]);
+      const script = document.createElement("script");
+      script.id = "hs-script-loader";
+      script.async = true;
+      script.defer = true;
+      script.src = `https://${hubspot}.js`;
+      document.body.appendChild(script);
+      window.stsHubSpotLoaded = true;
+      hubspotPath.current = path;
+      return;
+    }
+    // Later React Router navigations are reported to HubSpot by hand.
+    if (hubspotPath.current === path) return;
+    hubspotPath.current = path;
+    window._hsq.push(["setPath", path]);
+    window._hsq.push(["trackPageView"]);
+  }, [consent, hubspot, location.pathname, location.search]);
   useEffect(() => {
     if (!measurementId || window.stsConsentModeSet) return;
     window.dataLayer = window.dataLayer || [];
@@ -1854,9 +1929,17 @@ function AnalyticsConsent() {
     window.gtag("consent", "update", { analytics_storage: "granted" });
     window.gtag("event", "page_view", { page_location: window.location.href, page_path: location.pathname, page_title: document.title });
   }, [consent, measurementId, location.pathname]);
-  const decide = (value) => { window.localStorage.setItem("sts_analytics_consent", value); setConsent(value); };
-  if (!measurementId || consent !== null) return null;
-  return <aside className="analytics-consent" aria-label="Analytics cookie choice"><p>We use optional Google Analytics to understand website visits and improve our services. It does not affect your enquiry.</p><div><button type="button" className="text-button" onClick={() => decide("denied")}>No thanks</button><button type="button" className="button" onClick={() => decide("accepted")}>Accept analytics</button></div></aside>;
+  const decide = (value) => {
+    try {
+      window.localStorage.setItem(consentKey, value);
+    } catch {
+      /* private mode: the choice lasts for this page view only */
+    }
+    setConsent(value);
+  };
+  if ((!measurementId && !hubspot) || consent !== null) return null;
+  const tools = [measurementId && "Google Analytics", hubspot && "HubSpot"].filter(Boolean).join(" and ");
+  return <aside className="analytics-consent" aria-label="Analytics cookie choice"><p>We use optional {tools} cookies to understand website visits and improve our services. Declining does not affect your enquiry.</p><div><button type="button" className="text-button" onClick={() => decide("denied")}>No thanks</button><button type="button" className="button" onClick={() => decide("accepted")}>Accept analytics</button></div></aside>;
 }
 const chatGreeting =
   "Hi! I’m the Samarth Tech Software assistant. Tell me what you’d like to build or improve, and I’ll help you send the details to our team.";
@@ -1958,8 +2041,9 @@ function ChatAssistant() {
       setReceipt(data.reference);
       setDraft(null);
       setStatus("sent");
-      if (window.gtag && window.localStorage.getItem("sts_analytics_consent") === "accepted")
+      if (window.gtag && analyticsAllowed())
         window.gtag("event", "generate_lead", { service: values.service, method: "chat" });
+      hubspotIdentify(values.email);
     } catch (err) {
       setError(err.message || "Your enquiry could not be sent. Please try again.");
       setStatus("idle");
