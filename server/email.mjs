@@ -43,7 +43,7 @@ function details(record) {
   ];
 }
 
-function layout({ origin, preheader, heading, intro, record, messageLabel, note, closing }) {
+function layout({ origin, preheader, heading, intro, questions = [], record, messageLabel, note, closing }) {
   const logo = origin?.startsWith("https://")
     ? `<img src="${escape(`${origin}/sts-logo.png`)}" width="120" height="80" alt="${escape(company.name)}" style="display:block;border:0;width:120px;height:80px">`
     : `<span style="font-size:20px;font-weight:bold;color:${colors.navy}">${escape(company.name)}</span>`;
@@ -67,6 +67,7 @@ function layout({ origin, preheader, heading, intro, record, messageLabel, note,
 <tr><td style="padding:24px">
 <h1 style="margin:0 0 12px;font-size:22px;color:${colors.navy};font-family:${font}">${escape(heading)}</h1>
 ${intro.map((p) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.5;color:${colors.ink}">${escape(p)}</p>`).join("")}
+${questions.length ? `<ol style="margin:0 0 16px;padding-left:22px;font-size:15px;line-height:1.5;color:${colors.ink}">${questions.map((q) => `<li style="margin:0 0 8px">${escape(q)}</li>`).join("")}</ol>` : ""}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid ${colors.line};border-radius:6px">${rows}</table>
 <h2 style="margin:20px 0 8px;font-size:16px;color:${colors.navy};font-family:${font}">${escape(messageLabel)}</h2>
 <div style="padding:12px;background:${colors.canvas};border-left:3px solid ${colors.orange};font-size:14px;line-height:1.5;color:${colors.ink};word-break:break-word">${message}</div>
@@ -139,5 +140,81 @@ export function visitorEmail(record, origin) {
           note,
           closing: ["Regards,", company.name],
         }),
+  };
+}
+
+// Questions for the automatic follow-up, chosen by the service the visitor
+// picked. A service without its own list uses the general questions.
+const followUpQuestions = {
+  "custom-software": [
+    "Which task, spreadsheet or manual process should the software replace first?",
+    "Roughly how many people will use it, and in which roles (owner, office staff, field staff, customers)?",
+    "Which tools must it work with today, for example Tally, Excel, WhatsApp, a payment gateway or an existing website?",
+  ],
+  "website-development": [
+    "Do you already have a website or domain? If so, please share the link.",
+    "Which pages or features do you need, for example services, enquiry form, product catalogue, booking or a blog?",
+    "Please share two or three websites you like, and what you like about them.",
+  ],
+  "web-applications": [
+    "Which process should the web application handle first, and how is it done today?",
+    "Roughly how many people will log in, and do different roles need different access?",
+    "Which tools or data must it connect to, for example Excel files, accounting software or an existing database?",
+  ],
+  "mobile-applications": [
+    "Do you need Android, iPhone or both?",
+    "Who will use the app: your customers, your field staff, or both?",
+    "Which three features must the first version have?",
+  ],
+  wordpress: [
+    "Is this a new WordPress site, or an existing one to improve? If existing, please share the link.",
+    "Who on your team will update the content, and how often?",
+    "Do you need features such as WooCommerce, bookings, multiple languages or a members area?",
+  ],
+  "ai-automation": [
+    "Which repetitive task takes your team the most time today?",
+    "Roughly how often does it happen, for example how many orders, emails or documents per day?",
+    "Where does the information live today, for example Excel, Google Sheets, email, WhatsApp or accounting software?",
+  ],
+  "php-security": [
+    "Which website or application needs attention, and who hosts it?",
+    "Do you know the PHP or WordPress version it runs on?",
+    "Have you seen any warning signs, such as a malware alert, unexpected redirects, spam emails or slowness?",
+  ],
+  "not-sure": [
+    "What problem would you most like to solve first?",
+    "Which tools do you use today, for example Excel, WhatsApp, Tally or an existing website?",
+    "What would a good result look like for you six months from now?",
+  ],
+};
+
+export function followUpEmail(record, origin) {
+  const questions = [
+    ...(followUpQuestions[record.service] || followUpQuestions["not-sure"]),
+    "Do you have a rough budget range in mind? A range is enough.",
+    record.phone
+      ? "When is a good time for a short call?"
+      : "When is a good time for a short call, and on which phone number?",
+  ];
+  const intro = [
+    `Thank you again for your enquiry about ${serviceName(record.service)}. We are reviewing it now.`,
+    "So we can send you useful next steps, could you reply to this email with a few more details? Short answers are fine.",
+  ];
+  const note =
+    "Please do not send passwords, OTPs or payment details by email. If you no longer need help, simply reply \"no thanks\" and we will not follow up again.";
+  return {
+    subject: `A few quick questions about your enquiry ${record.id} | ${company.name}`,
+    text: `Hello ${record.name},\n\n${intro.join("\n\n")}\n\n${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nYour original request:\n${record.message}\n\n${note}\n\nRegards,\n${company.name}\n${company.email}\n${textSocial()}`,
+    html: layout({
+      origin,
+      preheader: "A few quick questions so we can prepare your next steps",
+      heading: `Hello ${record.name},`,
+      intro,
+      questions,
+      record,
+      messageLabel: "Your original request",
+      note,
+      closing: ["Regards,", company.name],
+    }),
   };
 }

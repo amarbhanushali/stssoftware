@@ -11,11 +11,26 @@ let child, base, cookie, token, mockOpenAI;
 // Local stand-in for the OpenAI Chat Completions API, so tests never spend
 // money or need network access.
 const openAIRequests = [];
+const hubspotRequests = [];
 function startMockOpenAI() {
   mockOpenAI = createServer((req, res) => {
     let body = "";
     req.on("data", (chunk) => (body += chunk));
     req.on("end", () => {
+      res.setHeader("Content-Type", "application/json");
+      // The same mock also stands in for the HubSpot CRM API.
+      if (req.url.startsWith("/crm/")) {
+        hubspotRequests.push({
+          method: req.method,
+          url: req.url,
+          auth: req.headers.authorization,
+          body: body ? JSON.parse(body) : null,
+        });
+        if (req.url.includes("/batch/upsert"))
+          return res.end(JSON.stringify({ results: [{ id: "901" }] }));
+        res.statusCode = req.method === "POST" ? 201 : 200;
+        return res.end(JSON.stringify({ id: "n1", results: [] }));
+      }
       const json = JSON.parse(body);
       openAIRequests.push({ auth: req.headers.authorization, body: json });
       const last = json.messages.at(-1).content;
@@ -79,6 +94,8 @@ before(async () => {
       PUBLIC_ORIGIN: "http://localhost:3001",
       OPENAI_API_KEY: "test-key",
       OPENAI_BASE_URL: `http://127.0.0.1:${openAIPort}/v1`,
+      HUBSPOT_ACCESS_TOKEN: "hs-test-token",
+      HUBSPOT_BASE_URL: `http://127.0.0.1:${openAIPort}`,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -420,4 +437,80 @@ test("email setup problems are diagnosed without leaking secrets", async () => {
   assert.equal(warnings.length, 2);
   assert.match(warnings[0], /Send mail as/);
   assert.match(warnings[1], /Sent, not Inbox/);
+});
+
+test("enquiries are saved to HubSpot as a contact with an escaped note", async () => {
+  // Enquiries were submitted by earlier tests; give the background sync a moment.
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  assert.ok(hubspotRequests.every((r) => r.auth === "Bearer hs-test-token"));
+  const upsert = hubspotRequests.find(
+    (r) => r.url.includes("/batch/upsert") && r.body.inputs[0].id === "chat@example.com",
+  );
+  assert.ok(upsert, "contact upsert sent");
+  assert.equal(upsert.body.inputs[0].idProperty, "email");
+  assert.equal(upsert.body.inputs[0].properties.hs_lead_status, "NEW");
+  const note = hubspotRequests.find((r) => r.url === "/crm/v3/objects/notes");
+  assert.equal(note.body.associations[0].to.id, "901");
+  assert.equal(note.body.associations[0].types[0].associationTypeId, 202);
+  const db = new DatabaseSync(path.join(data, "enquiries.sqlite"), { readOnly: true });
+  const row = db.prepare("SELECT hubspot_contact_id, hubspot_status FROM enquiries WHERE email=?").get("chat@example.com");
+  db.close();
+  assert.deepEqual({ ...row }, { hubspot_contact_id: "901", hubspot_status: "synced" });
+  const { enquiryNote } = await import("../server/hubspot.mjs");
+  const html = enquiryNote({ ...payload, id: "STS-X", message: "<script>alert(1)</script>" });
+  assert.match(html, /&lt;script&gt;/);
+  assert.doesNotMatch(html, /<script/);
+});
+
+test("follow-up emails go once, within 24 hours, in business hours", async () => {
+  const { createFollowUps } = await import("../server/followup.mjs");
+  const db = new DatabaseSync(":memory:");
+  db.exec(`CREATE TABLE enquiries (id TEXT PRIMARY KEY, created_at TEXT, name TEXT, email TEXT,
+    company TEXT, phone TEXT, service TEXT, timeline TEXT, message TEXT, whatsapp_opt_in INTEGER DEFAULT 0,
+    hubspot_contact_id TEXT, followup_status TEXT, followup_sent_at TEXT)`);
+  const now = new Date("2026-11-16T05:30:00Z"); // 11:00 IST
+  const hoursAgo = (h) => new Date(now.getTime() - h * 3600000).toISOString();
+  const add = (id, age, contact = null) =>
+    db.prepare("INSERT INTO enquiries VALUES (?,?,?,?,?,?,?,?,?,0,?,NULL,NULL)").run(
+      id, hoursAgo(age), "Lead <b>", `${id}@example.com`, "", "", "website-development",
+      "1–3 months", "We need a new website for our shop.", contact,
+    );
+  add("STS-DUE", 7);
+  add("STS-NEW", 2);
+  add("STS-OLD", 30);
+  add("STS-CALLED", 8, "c-called");
+  add("STS-HSNEW", 9, "c-new");
+  const sent = [];
+  const notes = [];
+  const followUps = createFollowUps({
+    db,
+    transport: { sendMail: async (mail) => sent.push(mail) },
+    delayHours: 6,
+    hubspot: {
+      leadStatus: async (id) => (id === "c-called" ? "CONNECTED" : "NEW"),
+      addNote: async (id, html) => notes.push([id, html]),
+    },
+    origin: "https://stssoftware.in",
+    from: "STS <info@stssoftware.in>",
+    replyTo: "sales@stssoftware.in",
+    log: { error() {} },
+  });
+  assert.deepEqual(await followUps.run(new Date("2026-11-16T17:00:00Z")), [], "22:30 IST: waits");
+  const results = await followUps.run(now);
+  assert.deepEqual(results.map((r) => `${r.id}:${r.status}`).sort(), [
+    "STS-CALLED:skipped-contacted",
+    "STS-DUE:sent",
+    "STS-HSNEW:sent",
+  ]);
+  assert.deepEqual(sent.map((m) => m.to).sort(), ["STS-DUE@example.com", "STS-HSNEW@example.com"]);
+  assert.equal(sent[0].replyTo, "sales@stssoftware.in");
+  assert.match(sent[0].subject, /A few quick questions/);
+  assert.match(sent[0].html, /Do you already have a website or domain/);
+  assert.match(sent[0].html, /Hello Lead &lt;b&gt;/);
+  assert.deepEqual(notes.map(([id]) => id), ["c-new"]);
+  assert.deepEqual(await followUps.run(now), [], "never sent twice");
+  assert.equal(db.prepare("SELECT followup_status FROM enquiries WHERE id='STS-NEW'").get().followup_status, null);
+  assert.equal(createFollowUps({ db, transport: null, delayHours: 6 }).enabled, false);
+  assert.equal(createFollowUps({ db, transport: {}, delayHours: 30 }).enabled, false);
+  db.close();
 });

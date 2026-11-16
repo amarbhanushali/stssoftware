@@ -14,7 +14,7 @@ console.log(
   JSON.stringify(
     db
       .prepare(
-        "SELECT id,created_at,name,email,company,phone,service,timeline,message,source,notification_status FROM enquiries ORDER BY created_at DESC",
+        "SELECT id,created_at,name,email,company,phone,service,timeline,message,source,notification_status,hubspot_status,followup_status,followup_sent_at FROM enquiries ORDER BY created_at DESC",
       )
       .all(),
     null,

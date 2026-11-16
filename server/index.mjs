@@ -27,6 +27,14 @@ import {
 } from "../src/metadata.js";
 import { teamEmail, visitorEmail } from "./email.mjs";
 import { askAssistant, chatEnabled, cleanMessages } from "./chat.mjs";
+import {
+  addNote,
+  hubspotCheck,
+  hubspotEnabled,
+  leadStatus,
+  syncEnquiry,
+} from "./hubspot.mjs";
+import { createFollowUps } from "./followup.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = process.env.DATA_DIR || path.join(root, "server", "data");
@@ -47,10 +55,18 @@ try {
 } catch (error) {
   if (!String(error.message).includes("duplicate column name")) throw error;
 }
-try {
-  db.exec("ALTER TABLE enquiries ADD COLUMN source TEXT NOT NULL DEFAULT 'form'");
-} catch (error) {
-  if (!String(error.message).includes("duplicate column name")) throw error;
+for (const column of [
+  "source TEXT NOT NULL DEFAULT 'form'",
+  "hubspot_contact_id TEXT",
+  "hubspot_status TEXT",
+  "followup_status TEXT",
+  "followup_sent_at TEXT",
+]) {
+  try {
+    db.exec(`ALTER TABLE enquiries ADD COLUMN ${column}`);
+  } catch (error) {
+    if (!String(error.message).includes("duplicate column name")) throw error;
+  }
 }
 const secret = randomBytes(32);
 const app = express();
@@ -194,7 +210,21 @@ const transport = createMailTransport();
     );
   else console.log("Email: notifications are off (no SMTP settings).");
 }
+async function syncToHubSpot(record) {
+  if (!hubspotEnabled()) return;
+  try {
+    const contactId = await syncEnquiry(record);
+    db.prepare(
+      "UPDATE enquiries SET hubspot_contact_id=?, hubspot_status='synced' WHERE id=?",
+    ).run(contactId, record.id);
+  } catch (error) {
+    db.prepare("UPDATE enquiries SET hubspot_status='failed' WHERE id=?").run(record.id);
+    console.error(`HubSpot sync failed for ${record.id}; enquiry remains saved. ${error.message}`);
+  }
+}
 async function notify(record) {
+  // The CRM sync runs alongside the emails; neither waits for the other.
+  const crm = syncToHubSpot(record);
   if (transport) {
     const origin = process.env.PUBLIC_ORIGIN?.replace(/\/$/, "");
     // The team alert and the visitor copy are sent independently, so a bad
@@ -232,7 +262,33 @@ async function notify(record) {
       );
   }
   await notifyWhatsApp(record);
+  await crm;
 }
+if (hubspotEnabled())
+  hubspotCheck()
+    .then(() => console.log("HubSpot: connected; new enquiries will be saved as contacts."))
+    .catch((error) => console.error(`HubSpot: connection check failed. ${error.message}`));
+const followUps = createFollowUps({
+  db,
+  transport,
+  delayHours: Number(process.env.FOLLOWUP_DELAY_HOURS || 0),
+  hubspot: hubspotEnabled() ? { leadStatus, addNote } : null,
+  origin: process.env.PUBLIC_ORIGIN?.replace(/\/$/, ""),
+  from: process.env.MAIL_FROM,
+  replyTo: process.env.NOTIFY_EMAIL,
+});
+if (followUps.enabled) {
+  const tick = () =>
+    followUps.run().catch((error) => console.error(`Follow-up run failed: ${error.message}`));
+  setTimeout(tick, 30 * 1000).unref();
+  setInterval(tick, 10 * 60 * 1000).unref();
+  console.log(
+    `Follow-up: enabled, ${process.env.FOLLOWUP_DELAY_HOURS} h after each enquiry (09:00–20:00 IST).`,
+  );
+} else if (process.env.FOLLOWUP_DELAY_HOURS)
+  console.error(
+    "Follow-up: OFF. FOLLOWUP_DELAY_HOURS must be between 0 and 24 and email must be configured.",
+  );
 
 function whatsappNumber(value) {
   const digits = String(value || "").replace(/\D/g, "");
