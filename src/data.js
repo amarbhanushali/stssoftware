@@ -357,6 +357,55 @@ export const articles = [
     intro:
       "By cutting the waiting between steps: an agent gathers the details, checks them and prepares the next action, and a person approves anything risky.",
     minutes: 5,
+    // Optional diagrams, drawn with HTML and CSS. Each appears after the
+    // section at index `after`. Tone "slow" marks waiting between steps.
+    figures: [
+      {
+        after: 0,
+        title: "How an AI agent works through a task",
+        rows: [
+          {
+            label: "Each step",
+            tone: "fast",
+            steps: [
+              "Read the request",
+              "Use an approved tool",
+              "Check the result",
+              "Ready, or ask a person",
+            ],
+          },
+        ],
+        caption:
+          "The agent repeats these steps until the job is ready for approval or it needs help.",
+      },
+      {
+        after: 2,
+        title: "Where the time goes in one order",
+        rows: [
+          {
+            label: "Today",
+            tone: "slow",
+            steps: [
+              "Order arrives on WhatsApp",
+              "Stores checks stock",
+              "Accounts checks balance",
+              "Billing makes the invoice",
+            ],
+          },
+          {
+            label: "With an agent",
+            tone: "fast",
+            steps: [
+              "Order arrives",
+              "Agent checks stock and balance, drafts the invoice",
+              "Billing approves",
+            ],
+          },
+        ],
+        caption:
+          "Hypothetical example. The work stays the same; the waiting between people shrinks.",
+      },
+    ],
     sections: [
       [
         "What an AI agent is, and how it differs from a chatbot",

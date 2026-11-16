@@ -267,3 +267,22 @@ test("articles and service pages link to each other", async () => {
   assert.match(article, /href="\/services\/php-security"/);
   assert.equal(article.match(/<h1[\s>]/g).length, 1);
 });
+
+test("article figures are valid and server-rendered", async () => {
+  const { articles } = await import("../src/data.js");
+  for (const a of articles)
+    for (const f of a.figures || []) {
+      assert.ok(Number.isInteger(f.after) && f.after >= 0 && f.after < a.sections.length, `${a.slug}: ${f.title}`);
+      assert.ok(f.title && f.caption && f.rows.length, `${a.slug}: ${f.title}`);
+      for (const r of f.rows) {
+        assert.ok(["slow", "fast"].includes(r.tone), `${a.slug}: ${r.label}`);
+        assert.ok(r.steps.length >= 2, `${a.slug}: ${r.label}`);
+      }
+    }
+  const html = await (await fetch(base + "/insights/ai-agents-faster-business-processes")).text();
+  assert.match(html, /<figure class="flow-figure">/);
+  assert.match(html, /Where the time goes in one order/);
+  assert.match(html, /<span class="flow-wait">waits<\/span>Accounts checks balance<\/li>/);
+  assert.match(html, /<ol class="flow-steps" role="list" aria-labelledby="[^"]+">/);
+  assert.equal(html.match(/<h1[\s>]/g).length, 1);
+});

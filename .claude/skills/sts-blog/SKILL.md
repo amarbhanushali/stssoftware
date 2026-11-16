@@ -135,6 +135,8 @@ Posts live in the `articles` array in `src/data.js`. There is no CMS and no Mark
   title: "Website or mobile app: which should your business build first?",
   intro: "For most businesses, a website that works well on a phone comes first. Build an app when customers need it every week, not once.",
   minutes: 4, // about 200 words per minute, rounded up
+  // Optional: figures: [{ after: 0, title, rows: [{ label, tone: "slow" | "fast", steps: ["…", "…"] }], caption }]
+  // Step diagrams drawn in HTML/CSS (no image files), shown after section index `after`.
   sections: [
     ["Heading that answers a question", "One focused paragraph of about 40–100 words."],
     // 4–6 sections

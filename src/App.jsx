@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import {
   Link,
   NavLink,
@@ -1268,6 +1268,35 @@ function Insights() {
     </>
   );
 }
+// A step-by-step diagram built from plain lists, so it ships in the SSR
+// HTML with no image download and stays readable to search and screen readers.
+function FlowFigure({ figure }) {
+  const id = useId();
+  return (
+    <figure className="flow-figure">
+      <h3>{figure.title}</h3>
+      {figure.rows.map((row, r) => (
+        <div className={`flow-row ${row.tone}`} key={r}>
+          <span className="flow-label" id={`${id}-${r}`}>
+            {row.label}
+          </span>
+          {/* role="list" keeps list semantics in Safari despite list-style: none */}
+          <ol className="flow-steps" role="list" aria-labelledby={`${id}-${r}`}>
+            {row.steps.map((step, s) => (
+              <li key={s}>
+                {row.tone === "slow" && s > 0 && (
+                  <span className="flow-wait">waits</span>
+                )}
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+      <figcaption>{figure.caption}</figcaption>
+    </figure>
+  );
+}
 function Article() {
   const { slug } = useParams();
   const a = articles.find((a) => a.slug === slug);
@@ -1282,10 +1311,15 @@ function Article() {
       </Hero>
       <section className="section white">
         <article className="container reading-column">
-          {a.sections.map(([h, p]) => (
+          {a.sections.map(([h, p], i) => (
             <section key={h}>
               <h2>{h}</h2>
               <p>{p}</p>
+              {(a.figures || [])
+                .filter((f) => f.after === i)
+                .map((f) => (
+                  <FlowFigure key={f.title} figure={f} />
+                ))}
             </section>
           ))}
           <section>
