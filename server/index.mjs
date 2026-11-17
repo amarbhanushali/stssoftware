@@ -43,6 +43,7 @@ import {
   syncEnquiry,
 } from "./hubspot.mjs";
 import { createFollowUps } from "./followup.mjs";
+import { googleVerification } from "./verification.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = process.env.DATA_DIR || path.join(root, "server", "data");
@@ -119,6 +120,8 @@ if (Number.isInteger(trustProxy) && trustProxy > 0)
 // banner itself is switched off in the page, the site's own banner asks).
 // HubSpot chat, pop-up forms and "collected forms" stay blocked: the site has
 // its own chat and enquiry form, which already sync to HubSpot server-side.
+const siteVerification = googleVerification(process.env.GOOGLE_SITE_VERIFICATION);
+if (siteVerification.problem) console.error(`SEO: ${siteVerification.problem}`);
 const hubspotTrackingOn = /^https:\/\//.test(process.env.PUBLIC_ORIGIN || "");
 const hubspotScripts = hubspotTrackingOn
   ? ["https://*.hs-scripts.com", "https://*.hs-analytics.net", "https://*.hs-banner.com"]
@@ -631,8 +634,8 @@ if (existsSync(path.join(dist, "index.html"))) {
       );
       head.push(`<link rel="canonical" href="${escape(pageUrl)}"/>`);
       head.push(`<meta property="og:type" content="website"/><meta property="og:site_name" content="Samarth Tech Software"/><meta property="og:title" content="${title}"/><meta property="og:description" content="${escape(metadata.description)}"/><meta property="og:url" content="${escape(pageUrl)}"/><meta property="og:image" content="${escape(imageUrl)}"/><meta property="og:locale" content="en_IN"/><meta property="og:image:alt" content="Samarth Tech Software logo"/><meta name="twitter:card" content="summary"/><meta name="twitter:title" content="${title}"/><meta name="twitter:description" content="${escape(metadata.description)}"/><meta name="twitter:image" content="${escape(imageUrl)}"/><script type="application/ld+json">${structuredData}</script>`);
-      if (process.env.GOOGLE_SITE_VERIFICATION)
-        head.push(`<meta name="google-site-verification" content="${escape(process.env.GOOGLE_SITE_VERIFICATION)}"/>`);
+      if (siteVerification.token)
+        head.push(`<meta name="google-site-verification" content="${escape(siteVerification.token)}"/>`);
       if (hubspotTrackingOn)
         head.push(`<meta name="hubspot-tracking" content="${escape(`${hubspotTracking.scriptHost}/${hubspotTracking.portalId}`)}"/>`);
       if (/^G-[A-Z0-9]+$/i.test(process.env.GOOGLE_ANALYTICS_ID || ""))

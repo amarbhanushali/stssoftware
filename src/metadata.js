@@ -5,6 +5,10 @@ export const company = {
   region: "Maharashtra",
   country: "India",
   email: "sales@stssoftware.in",
+  // Business phone (confirmed by the owner). Shown as a tap-to-call link and
+  // published as telephone/contactPoint in the structured data.
+  phone: "+919922792566",
+  phoneDisplay: "+91 99227 92566",
   social: [
     ["LinkedIn", "https://www.linkedin.com/company/samarthtechsoftware"],
     ["Facebook", "https://www.facebook.com/ststechsoftware"],
@@ -163,6 +167,14 @@ export function getStructuredData(pathname, origin) {
       alternateName: "STS Software",
       url: origin,
       email: company.email,
+      telephone: company.phone,
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "sales",
+        telephone: company.phone,
+        email: company.email,
+        areaServed: "IN",
+      },
       logo: `${origin}/sts-logo.png`,
       sameAs: company.social.map(([, url]) => url),
       image: `${origin}/sts-whatsapp-app-icon.png`,
@@ -260,7 +272,7 @@ export function getLlmsText(origin) {
     "",
     `> ${baseDescription}`,
     "",
-    `${company.name} is located at 16 Shukhakarta Row Houses, Ashok Nagar, ${company.locality}, ${company.region} 422012, ${company.country}. Enquiries are accepted through ${origin}/contact.`,
+    `${company.name} is located at 16 Shukhakarta Row Houses, Ashok Nagar, ${company.locality}, ${company.region} 422012, ${company.country}. Enquiries are accepted through ${origin}/contact or by phone on ${company.phoneDisplay}.`,
     "",
     "## Services",
     ...services.map((s) => link(`/services/${s.slug}`, s.name, s.description)),

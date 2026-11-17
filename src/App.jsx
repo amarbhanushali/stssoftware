@@ -51,6 +51,22 @@ function hubspotIdentify(email) {
   window._hsq.push(["identify", { email }]);
   window._hsq.push(["trackPageView"]);
 }
+// Counts taps on the phone number as a GA4 event, only after consent.
+function trackContact(method) {
+  if (window.gtag && analyticsAllowed())
+    window.gtag("event", "contact_click", { method });
+}
+function PhoneLink({ className }) {
+  return (
+    <a
+      className={className}
+      href={`tel:${company.phone}`}
+      onClick={() => trackContact("phone")}
+    >
+      {company.phoneDisplay}
+    </a>
+  );
+}
 function Icon({ name = "arrow", ...props }) {
   return (
     <svg
@@ -189,6 +205,7 @@ function Footer() {
           <a className="footer-email" href={`mailto:${company.email}`}>
             {company.email}
           </a>
+          <PhoneLink className="footer-phone" />
           <Link className="footer-contact" to="/contact">
             Let’s talk about your project <Icon />
           </Link>
@@ -295,6 +312,9 @@ function CTA() {
           <p>
             Tell us what is going on in a few lines. We will read it properly
             and reply with honest next steps.
+          </p>
+          <p className="cta-call">
+            Prefer to talk? Call <PhoneLink />.
           </p>
         </div>
         <Button>Discuss Your Project</Button>
@@ -1491,6 +1511,12 @@ function Consultation() {
               </p>
             </div>
             <div className="privacy-note">
+              <Icon name="phone" />
+              <p>
+                Prefer to talk? Call us on <PhoneLink />.
+              </p>
+            </div>
+            <div className="privacy-note">
               <Icon name="mail" />
               <p>
                 Prefer email? Write to{" "}
@@ -1518,7 +1544,8 @@ function Consultation() {
                 <strong className="receipt">{receipt}</strong>
                 <p>
                   We will review the details and use the email address you
-                  provided to discuss next steps.
+                  provided to discuss next steps. If it is urgent, call us on{" "}
+                  <PhoneLink />.
                 </p>
                 <Button to="/services" outline>
                   Explore Our Services

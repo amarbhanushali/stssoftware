@@ -913,6 +913,15 @@ a:hover {
 .cta .button {
   flex-shrink: 0;
 }
+.cta .cta-call {
+  margin-top: 14px;
+  font-size: 15px;
+}
+.cta .cta-call a {
+  color: #ffb179;
+  font-weight: 700;
+  text-decoration: underline;
+}
 .page-hero {
   padding: 30px 0 64px;
   border-bottom: 1px solid var(--line);
@@ -1823,8 +1832,13 @@ footer {
   color: #a9bdd7;
   margin-top: 12px;
 }
-.footer-email {
+.footer-email,
+.footer-phone {
   font-size: 14px;
+}
+.footer-phone {
+  /* 30px line + the footer link's 7px padding top and bottom = a 44px tap area */
+  line-height: 30px;
 }
 .footer-contact {
   font-size: 14px;

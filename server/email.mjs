@@ -77,6 +77,7 @@ ${closing ? `<p style="margin:20px 0 0;font-size:15px;line-height:1.5;color:${co
 <tr><td style="padding:16px 24px;background:${colors.canvas};border-top:1px solid ${colors.line};font-size:12px;line-height:1.5;color:${colors.muted}">
 <strong style="color:${colors.ink}">${escape(company.name)}</strong><br>${escape(address)}<br>
 ${site}<a href="mailto:${escape(company.email)}" style="color:${colors.navy}">${escape(company.email)}</a><br>
+<a href="tel:${escape(company.phone)}" style="color:${colors.navy}">${escape(company.phoneDisplay)}</a><br>
 ${company.social.map(([network, url]) => `<a href="${escape(url)}" style="color:${colors.navy}">${network}</a>`).join(" · ")}
 </td></tr>
 </table></td></tr></table>
@@ -125,7 +126,7 @@ export function visitorEmail(record, origin) {
       "We received your enquiry | Samarth Tech Software",
     text:
       process.env.AUTO_REPLY_EMAIL_TEXT ||
-      `Hello ${record.name},\n\n${intro.join("\n\n")}\n\n${textDetails(record)}\n\nProject details:\n${record.message}\n\n${note}\n\nRegards,\n${company.name}\n${company.email}\n${textSocial()}`,
+      `Hello ${record.name},\n\n${intro.join("\n\n")}\n\n${textDetails(record)}\n\nProject details:\n${record.message}\n\n${note}\n\nRegards,\n${company.name}\n${company.email}\n${company.phoneDisplay}\n${textSocial()}`,
     // A custom AUTO_REPLY_EMAIL_TEXT replaces the whole message, so no HTML
     // part is sent that would contradict it.
     html: process.env.AUTO_REPLY_EMAIL_TEXT
@@ -204,7 +205,7 @@ export function followUpEmail(record, origin) {
     "Please do not send passwords, OTPs or payment details by email. If you no longer need help, simply reply \"no thanks\" and we will not follow up again.";
   return {
     subject: `A few quick questions about your enquiry ${record.id} | ${company.name}`,
-    text: `Hello ${record.name},\n\n${intro.join("\n\n")}\n\n${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nYour original request:\n${record.message}\n\n${note}\n\nRegards,\n${company.name}\n${company.email}\n${textSocial()}`,
+    text: `Hello ${record.name},\n\n${intro.join("\n\n")}\n\n${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nYour original request:\n${record.message}\n\n${note}\n\nRegards,\n${company.name}\n${company.email}\n${company.phoneDisplay}\n${textSocial()}`,
     html: layout({
       origin,
       preheader: "A few quick questions so we can prepare your next steps",

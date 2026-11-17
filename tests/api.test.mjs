@@ -717,3 +717,58 @@ test("HubSpot tracking loads only on the HTTPS site, with only its tracking doma
     await done;
   }
 });
+
+test("the business phone is a tap-to-call link and is in the structured data", async () => {
+  for (const route of ["/", "/contact", "/services/ai-automation"]) {
+    const html = await (await fetch(base + route)).text();
+    assert.match(html, /href="tel:\+919922792566"/, route);
+    assert.match(html, /\+91 99227 92566/, route);
+  }
+  const home = await (await fetch(base + "/")).text();
+  const graph = JSON.parse(home.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1])["@graph"];
+  const org = graph.find((node) => [].concat(node["@type"]).includes("Organization"));
+  assert.equal(org.telephone, "+919922792566");
+  assert.equal(org.contactPoint.contactType, "sales");
+  assert.equal(org.contactPoint.telephone, "+919922792566");
+  assert.match(await (await fetch(base + "/llms.txt")).text(), /by phone on \+91 99227 92566/);
+  const { teamEmail, visitorEmail, followUpEmail } = await import("../server/email.mjs");
+  const record = { ...payload, id: "STS-PHONE" };
+  for (const mail of [teamEmail(record), visitorEmail(record), followUpEmail(record)])
+    assert.match(mail.html, /href="tel:\+919922792566"/);
+  // The team alert's plain-text part is only the enquiry; visitor emails sign off with the phone.
+  for (const mail of [visitorEmail(record), followUpEmail(record)])
+    assert.match(mail.text, /\+91 99227 92566/);
+});
+
+test("a verification file name in GOOGLE_SITE_VERIFICATION is not published as a tag", async () => {
+  const { googleVerification } = await import("../server/verification.mjs");
+  const token = "a-3nVTixLd0_IFobpelu7mapofLHOhCBawYTO56anpk";
+  assert.deepEqual(googleVerification(""), { token: "", problem: "" });
+  assert.deepEqual(googleVerification(undefined), { token: "", problem: "" });
+  assert.equal(googleVerification(token).token, token);
+  assert.equal(googleVerification(` ${token} `).token, token);
+  assert.equal(googleVerification(`<meta name="google-site-verification" content="${token}" />`).token, token);
+  const file = googleVerification("google7a9acf876277da7e.html");
+  assert.equal(file.token, "");
+  assert.match(file.problem, /FILE name/);
+  for (const bad of ["short", "has spaces in it which is not a token at all", `${token}"><script>`])
+    assert.equal(googleVerification(bad).token, "", bad);
+
+  const run = async (value) => {
+    const live = await startServer({ ...serverEnv, PUBLIC_ORIGIN: "https://stssoftware.in", GOOGLE_SITE_VERIFICATION: value });
+    try {
+      return await (await fetch(`${live.url}/`)).text();
+    } finally {
+      const done = new Promise((resolve) => live.proc.once("exit", resolve));
+      live.proc.kill();
+      await done;
+    }
+  };
+  // The exact mistaken value from the live Hostinger settings.
+  assert.doesNotMatch(await run("google7a9acf876277da7e.html"), /google-site-verification/);
+  assert.match(await run(token), new RegExp(`<meta name="google-site-verification" content="${token}"/>`));
+  // Verification by HTML file keeps working regardless of the setting.
+  const file2 = await fetch(base + "/google7a9acf876277da7e.html");
+  assert.equal(file2.status, 200);
+  assert.equal((await file2.text()).trim(), "google-site-verification: google7a9acf876277da7e.html");
+});
