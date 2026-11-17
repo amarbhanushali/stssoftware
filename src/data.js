@@ -293,6 +293,7 @@ export const stages = [
 export const projects = [
   {
     slug: "order-automation",
+    services: ["ai-automation", "custom-software"],
     category: "AI Automation",
     title: "Stop retyping orders that arrive by email and WhatsApp",
     industry: "Manufacturing & Distribution",
@@ -310,6 +311,7 @@ export const projects = [
   },
   {
     slug: "business-portal",
+    services: ["custom-software", "web-applications"],
     category: "Custom Software",
     title: "One place for customers to check where their request stands",
     industry: "Business Services",
@@ -323,6 +325,7 @@ export const projects = [
   },
   {
     slug: "inventory-platform",
+    services: ["web-applications", "custom-software"],
     category: "Web Applications",
     title: "Know exactly what stock you have, at every location",
     industry: "Retail & Logistics",
@@ -336,6 +339,7 @@ export const projects = [
   },
   {
     slug: "field-operations",
+    services: ["mobile-applications"],
     category: "Mobile Solutions",
     title: "A field app that keeps working without signal",
     industry: "Field Services",
@@ -349,6 +353,43 @@ export const projects = [
   },
 ];
 export const articles = [
+  {
+    slug: "website-maintenance-amc-plan",
+    published: "2026-11-17",
+    updated: "2026-11-17",
+    category: "Web Development",
+    services: ["website-development", "php-security"],
+    title: "What should a website maintenance (AMC) plan include?",
+    intro:
+      "Tested updates, backups kept off the server and restored at least once, expiry alerts and a named contact, with exclusions written down.",
+    minutes: 3,
+    sections: [
+      [
+        "What does an annual maintenance contract actually buy?",
+        "An AMC (annual maintenance contract) is a fixed fee for keeping your website running and safe after launch, so a problem is a phone call and not a hunt for a developer. A website is never finished: PHP versions stop getting security fixes, plugins need updates, and domains, hosting and SSL certificates expire. The plan pays someone to watch all of this, so you do not find out from a customer.",
+      ],
+      [
+        "Five things a good plan should cover",
+        "Updates to the platform, plugins and server, tested on a copy before they go live. Backups kept away from the web server, with a restore that someone has actually tried. Alerts when the site goes down or when the domain, hosting or SSL certificate is close to expiry. A regular security check. And a stated amount of small fixes and content changes each month. If a plan skips one of these, ask who covers it.",
+      ],
+      [
+        "What a plan usually leaves out, and should say so",
+        "Most plans do not include new features, redesigns, writing content, or the fees for hosting, domain names and paid plugins, which go to the provider. Cleaning a site that was already hacked or badly out of date before the plan started is often priced separately. Ask what happens when you use more than the included changes: a clear price per extra request is better than a surprise bill.",
+      ],
+      [
+        "Questions to ask any provider, including us",
+        "How quickly do you respond to an urgent problem, and is it written in the plan? Who has access to the server, and is it logged? Will I get a short report of what changed each month? Where are backups kept, and when did you last restore one? If I leave, do I keep my files, logins and documentation? We offer maintenance plans and agree what is covered in writing before they start.",
+      ],
+      [
+        "When a plan is not worth paying for",
+        "A small brochure site on a managed website builder, where the provider handles updates, may need only a yearly check and renewal reminders. Paying for repairs only when something breaks can also work for a site that brings in no enquiries. A plan makes sense when the site earns you enquiries or sales, or runs on PHP, WordPress or Laravel code that needs regular security updates, because every day of downtime or a hacked page costs you visitors.",
+      ],
+      [
+        "Find out what you have today",
+        "Before you compare plans, write down who holds the domain, hosting and website logins, when the last backup was taken and whether anyone has restored one, and which PHP or WordPress version the site runs. If you cannot answer several of these, that gap is what a maintenance plan should close, so get the answers into the written plan before you sign.",
+      ],
+    ],
+  },
   {
     slug: "ai-agents-faster-business-processes",
     published: "2026-11-16",

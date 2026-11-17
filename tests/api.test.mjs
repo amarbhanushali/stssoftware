@@ -1045,3 +1045,164 @@ test("risky DATA_DIR choices are explained in the startup log", async () => {
     rmSync(path.resolve(relativeDir), { recursive: true, force: true });
   }
 });
+
+test("related guides never include the article itself and prefer shared services", async () => {
+  const { articles, projects, services } = await import("../src/data.js");
+  const { relatedArticles, examplesForService } = await import("../src/related.js");
+  for (const a of articles) {
+    const related = relatedArticles(a);
+    assert.equal(related.length, 3, a.slug);
+    assert.ok(!related.some((r) => r.slug === a.slug), `${a.slug} lists itself`);
+    assert.equal(new Set(related.map((r) => r.slug)).size, 3, `${a.slug} has duplicates`);
+  }
+  // The security guides share a service and a category, so they rank near the top for each other.
+  const laravel = articles.find((a) => a.slug === "laravel-security-2026");
+  const php = articles.find((a) => a.slug === "php-security-update-october-2026");
+  assert.ok(relatedArticles(laravel, 2).some((r) => r.slug === php.slug));
+  assert.ok(relatedArticles(php, 2).some((r) => r.slug === laravel.slug));
+  // Every project belongs to at least one real service.
+  const slugs = new Set(services.map((s) => s.slug));
+  for (const p of projects) {
+    assert.ok(p.services.length >= 1 && p.services.every((s) => slugs.has(s)), p.slug);
+    assert.ok(p.services.some((s) => examplesForService(s).includes(p)), p.slug);
+  }
+});
+
+test("every page is linked from several other pages, and new guides are linked from the home page", async () => {
+  const { articles, projects } = await import("../src/data.js");
+  const sitemap = await (await fetch(base + "/sitemap.xml")).text();
+  const paths = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname.replace(/\/$/, "") || "/");
+  assert.ok(paths.length > 25);
+  const inbound = new Map(paths.map((p) => [p, new Set()]));
+  for (const from of paths) {
+    const html = await (await fetch(base + from)).text();
+    for (const m of html.matchAll(/href="(\/[^"#?]*)"/g)) {
+      const to = m[1].replace(/\/$/, "") || "/";
+      if (to !== from && inbound.has(to)) inbound.get(to).add(from);
+    }
+  }
+  for (const [path, sources] of inbound) {
+    if (path === "/") continue;
+    assert.ok(sources.size >= 3, `${path} is linked from only ${sources.size} page(s): ${[...sources].join(", ")}`);
+  }
+  // Articles and examples must not depend on their index page alone.
+  for (const a of articles) {
+    const others = [...inbound.get(`/insights/${a.slug}`)].filter((s) => s !== "/insights");
+    assert.ok(others.length >= 2, `${a.slug} is linked from ${others.join(", ") || "no other page"}`);
+  }
+  for (const p of projects) {
+    const others = [...inbound.get(`/work/${p.slug}`)].filter((s) => s !== "/work");
+    assert.ok(others.length >= 2, `${p.slug} is linked from ${others.join(", ") || "no other page"}`);
+  }
+  // The home page shows the three newest guides.
+  const home = await (await fetch(base + "/")).text();
+  assert.match(home, /LATEST GUIDES/);
+  for (const a of articles.slice(0, 3)) assert.ok(home.includes(`href="/insights/${a.slug}"`), a.slug);
+});
+
+test("service pages link to their illustrative examples, clearly labelled", async () => {
+  const withExamples = await (await fetch(base + "/services/web-applications")).text();
+  assert.match(withExamples, /ILLUSTRATIVE EXAMPLES/);
+  assert.match(withExamples, /not client case studies or measured results/);
+  assert.match(withExamples, /href="\/work\/inventory-platform"/);
+  assert.match(withExamples, /href="\/work\/business-portal"/);
+  const without = await (await fetch(base + "/services/php-security")).text();
+  assert.doesNotMatch(without, /ILLUSTRATIVE EXAMPLES/);
+  const article = await (await fetch(base + "/insights/mobile-offline-workflows")).text();
+  assert.match(article, /Keep reading: related guides/);
+});
+
+test("static files carry long cache lifetimes where it is safe", async () => {
+  const home = await (await fetch(base + "/")).text();
+  const js = home.match(/src="(\/assets\/[^"]+\.js)"/)[1];
+  const css = home.match(/href="(\/assets\/[^"]+\.css)"/)[1];
+  for (const file of [js, css])
+    assert.equal((await fetch(base + file)).headers.get("cache-control"), "public, max-age=31536000, immutable", file);
+  for (const font of ["/fonts/inter-latin.woff2", "/fonts/jakarta-latin.woff2"])
+    assert.equal((await fetch(base + font)).headers.get("cache-control"), "public, max-age=2592000", font);
+  // Un-hashed files and pages must not be cached for a year.
+  assert.equal((await fetch(base + "/sts-logo.png")).headers.get("cache-control"), "public, max-age=3600");
+  assert.doesNotMatch((await fetch(base + "/")).headers.get("cache-control") || "", /immutable|31536000/);
+});
+
+test("fonts are preloaded and the logo is served at its displayed size", async () => {
+  const html = await (await fetch(base + "/")).text();
+  for (const font of ["inter", "jakarta"])
+    assert.match(html, new RegExp(`<link rel="preload" href="/fonts/${font}-latin\\.woff2" as="font" type="font/woff2" crossorigin`));
+  // Header and footer (150px wide) use the 300px logo; the 600px original stays for emails,
+  // structured data and the About page, where the logo is shown up to 360px wide.
+  for (const route of ["/", "/services", "/contact"]) {
+    const page = await (await fetch(base + route)).text();
+    assert.match(page, /src="\/sts-logo-300\.png"[^>]*width="300"[^>]*height="200"/, route);
+    assert.doesNotMatch(page, /src="\/sts-logo\.png"/, route);
+  }
+  const about = await (await fetch(base + "/about")).text();
+  assert.match(about, /<div class="about-mark"><img src="\/sts-logo\.png"[^>]*width="600"[^>]*height="400"/);
+  const logo = Buffer.from(await (await fetch(base + "/sts-logo-300.png")).arrayBuffer());
+  assert.equal(logo.readUInt32BE(16), 300);
+  assert.equal(logo.readUInt32BE(20), 200);
+  assert.ok(logo.length < 40_000, "small logo stays small");
+});
+
+test("the chat marker is in the page only when the assistant is configured", async () => {
+  // The shared test server has an OpenAI key.
+  assert.match(await (await fetch(base + "/")).text(), /<meta name="chat-enabled" content="1"\/>/);
+  const bare = await startServer({ ...serverEnv, OPENAI_API_KEY: "" });
+  try {
+    const html = await (await fetch(`${bare.url}/`)).text();
+    assert.doesNotMatch(html, /chat-enabled/);
+    assert.deepEqual(await (await fetch(`${bare.url}/api/chat`)).json(), { enabled: false });
+  } finally {
+    const done = new Promise((resolve) => bare.proc.once("exit", resolve));
+    bare.proc.kill();
+    await done;
+  }
+});
+
+test("the status dot pulses with a composited ring, not an animated shadow", async () => {
+  const css = readFileSync("src/styles.css", "utf8");
+  const keyframes = css.match(/@keyframes status-pulse \{[\s\S]*?\n\}/)[0];
+  assert.match(keyframes, /transform: scale/);
+  assert.match(keyframes, /opacity/);
+  assert.doesNotMatch(keyframes, /box-shadow/);
+  assert.match(css, /\.status-dot::after \{[^}]*animation: status-pulse/);
+  assert.doesNotMatch(css.match(/\.status-dot \{[^}]*\}/)[0], /animation/);
+});
+
+// WCAG contrast ratio of two #rrggbb colours.
+function contrast(a, b) {
+  const luminance = (hex) => {
+    const [r, g, bl] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+test("the cookie banner text has enough contrast on its dark background", async () => {
+  const css = readFileSync("src/styles.css", "utf8");
+  const full = (hex) => (hex.length === 4 ? `#${[...hex.slice(1)].map((c) => c + c).join("")}` : hex);
+  const banner = css.match(/\.analytics-consent \{([^}]*)\}/)[1];
+  const background = full(banner.match(/background:\s*(#[0-9a-f]{3,6})/i)[1]);
+  const bannerColor = full(banner.match(/(?<![-\w])color:\s*(#[0-9a-f]{3,6})/i)[1]);
+  const paragraph = css.match(/\.analytics-consent p \{([^}]*)\}/)[1];
+  // The global `p` rule is grey; the banner paragraph must not fall back to it.
+  const declared = paragraph.match(/(?<![-\w])color:\s*([^;]+);/)?.[1].trim();
+  assert.ok(declared, "the banner paragraph sets its own colour");
+  const textColor = declared === "inherit" ? bannerColor : full(declared);
+  assert.match(textColor, /^#[0-9a-f]{6}$/i);
+  assert.ok(contrast(textColor, background) >= 4.5, `contrast ${contrast(textColor, background).toFixed(2)} is below 4.5`);
+  // Sanity check of the helper: the old grey on this background really failed.
+  assert.ok(contrast("#59697f", background) < 4.5);
+});
+
+test("links with different destinations have different accessible names", async () => {
+  for (const route of ["/", "/services"]) {
+    const html = await (await fetch(base + route)).text();
+    const links = [...html.matchAll(/<a [^>]*class="text-link"[^>]*href="(\/services\/[^"]+)"[^>]*>(.*?)<\/a>/g)];
+    assert.ok(links.length >= 4, route);
+    const names = links.map(([, href, inner]) => [href, inner.replace(/<svg.*?<\/svg>/g, "").replace(/<[^>]+>/g, "").replace(/&#x27;/g, "'").trim()]);
+    for (const [href, name] of names) assert.match(name, /Explore service.*:/, `${href} name: ${name}`);
+    assert.equal(new Set(names.map(([, name]) => name)).size, new Set(names.map(([href]) => href)).size, `${route}: same name for different links`);
+  }
+});

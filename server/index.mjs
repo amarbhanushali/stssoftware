@@ -676,7 +676,21 @@ if (existsSync(path.join(dist, "index.html"))) {
       );
   });
   app.use(
-    express.static(dist, { index: false, dotfiles: "deny", maxAge: "1h" }),
+    express.static(dist, {
+      index: false,
+      dotfiles: "deny",
+      maxAge: "1h",
+      // Vite puts a content hash in every file name under /assets, so those
+      // files never change and can be cached for a year. Fonts keep their
+      // names, so they get 30 days. Everything else stays at one hour.
+      setHeaders(res, file) {
+        const relative = path.relative(dist, file).split(path.sep).join("/");
+        if (relative.startsWith("assets/"))
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        else if (relative.startsWith("fonts/"))
+          res.setHeader("Cache-Control", "public, max-age=2592000");
+      },
+    }),
   );
   app.get("/{*splat}", (req, res) => {
     const pathname = req.path.replace(/\/$/, "") || "/";
@@ -730,6 +744,9 @@ if (existsSync(path.join(dist, "index.html"))) {
       if (/^G-[A-Z0-9]+$/i.test(process.env.GOOGLE_ANALYTICS_ID || ""))
         head.push(`<meta name="google-analytics-id" content="${escape(process.env.GOOGLE_ANALYTICS_ID)}"/>`);
     }
+    // Tells the page the chat assistant is available, so the button needs no
+    // network request before it can appear.
+    if (chatEnabled()) head.push('<meta name="chat-enabled" content="1"/>');
     if (!found) head.push('<meta name="robots" content="noindex"/>');
     html = html.replace("</head>", `${head.join("")}</head>`);
     res

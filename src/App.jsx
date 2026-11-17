@@ -11,6 +11,7 @@ import {
 } from "react-router-dom";
 import { services, stages, projects, articles, faqs } from "./data.js";
 import { agentTools, runAgentTool } from "./agentTools.js";
+import { examplesForService, guidesForProject, relatedArticles } from "./related.js";
 import { company, getMetadata } from "./metadata.js";
 
 const paths = {
@@ -131,10 +132,10 @@ function Header() {
       <div className="container header-inner">
         <Link to="/" aria-label="Samarth Tech Software home" className="brand">
           <img
-            src="/sts-logo.png"
+            src="/sts-logo-300.png"
             alt="Samarth Tech Software"
-            width="600"
-            height="400"
+            width="300"
+            height="200"
           />
         </Link>
         <nav
@@ -196,10 +197,10 @@ function Footer() {
             aria-label="Samarth Tech Software home"
           >
             <img
-              src="/sts-logo.png"
+              src="/sts-logo-300.png"
               alt="Samarth Tech Software"
-              width="600"
-              height="400"
+              width="300"
+              height="200"
             />
           </Link>
           <p>
@@ -428,7 +429,7 @@ function ServiceCard({ service: s }) {
         ))}
       </div>
       <Link className="text-link" to={`/services/${s.slug}`}>
-        Explore service <Icon />
+        Explore service<span className="sr-only">: {s.name}</span> <Icon />
       </Link>
     </article>
   );
@@ -596,6 +597,25 @@ function Home() {
           </div>
         </div>
       </section>
+      <section className="section white">
+        <div className="container">
+          <SectionHeading
+            eyebrow="LATEST GUIDES"
+            title="Plain-English guides for business owners"
+            description="Practical answers to the questions we hear before a project starts."
+          />
+          <div className="grid three">
+            {articles.slice(0, 3).map((a) => (
+              <GuideCard key={a.slug} a={a} />
+            ))}
+          </div>
+          <div className="center-action">
+            <Link className="text-link" to="/insights">
+              Read all guides <Icon />
+            </Link>
+          </div>
+        </div>
+      </section>
       <CTA />
     </>
   );
@@ -700,11 +720,31 @@ function FAQ({ items }) {
     </div>
   );
 }
+function GuideCard({ a }) {
+  return (
+    <article className="card article-card">
+      <div className="article-content">
+        <div className="article-meta">
+          <Tag>{a.category}</Tag>
+          <span>{a.minutes} min read</span>
+        </div>
+        <h3>
+          <Link to={`/insights/${a.slug}`}>{a.title}</Link>
+        </h3>
+        <p>{a.intro}</p>
+        <Link className="text-link" to={`/insights/${a.slug}`}>
+          Read guide <Icon />
+        </Link>
+      </div>
+    </article>
+  );
+}
 function ServiceDetail() {
   const { slug } = useParams();
   const s = services.find((s) => s.slug === slug);
   if (!s) return <NotFound />;
   const guides = articles.filter((a) => a.services.includes(s.slug));
+  const examples = examplesForService(s.slug);
   return (
     <>
       <Hero
@@ -773,23 +813,28 @@ function ServiceDetail() {
             />
             <div className="grid three">
               {guides.map((a) => (
-                <article className="card article-card" key={a.slug}>
-                  <div className="article-content">
-                    <div className="article-meta">
-                      <Tag>{a.category}</Tag>
-                      <span>{a.minutes} min read</span>
-                    </div>
-                    <h3>
-                      <Link to={`/insights/${a.slug}`}>{a.title}</Link>
-                    </h3>
-                    <p>{a.intro}</p>
-                    <Link className="text-link" to={`/insights/${a.slug}`}>
-                      Read guide <Icon />
-                    </Link>
-                  </div>
-                </article>
+                <GuideCard key={a.slug} a={a} />
               ))}
             </div>
+          </div>
+        </section>
+      )}
+      {examples.length > 0 && (
+        <section className="section white">
+          <div className="container narrow">
+            <SectionHeading
+              eyebrow="ILLUSTRATIVE EXAMPLES"
+              title="Problems like this, and how we would approach them"
+              description="Examples of common business problems. They are not client case studies or measured results."
+            />
+            <ul className="related-links">
+              {examples.map((p) => (
+                <li key={p.slug}>
+                  <Link to={`/work/${p.slug}`}>{p.title}</Link>
+                  <span>{p.challenge}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
       )}
@@ -1048,6 +1093,7 @@ function About() {
             </Button>
           </div>
           <div className="about-mark">
+            {/* Shown up to 360px wide, so it keeps the full 600px logo. */}
             <img
               src="/sts-logo.png"
               alt="Samarth Tech Software"
@@ -1213,6 +1259,26 @@ function WorkDetail() {
               <Tag key={t}>{t}</Tag>
             ))}
           </div>
+          <h2>Guides on the same topics</h2>
+          <ul className="related-links">
+            {guidesForProject(p).map((a) => (
+              <li key={a.slug}>
+                <Link to={`/insights/${a.slug}`}>{a.title}</Link>
+                <span>{a.intro}</span>
+              </li>
+            ))}
+          </ul>
+          <h2>More illustrative examples</h2>
+          <ul className="related-links">
+            {projects
+              .filter((other) => other.slug !== p.slug)
+              .map((other) => (
+                <li key={other.slug}>
+                  <Link to={`/work/${other.slug}`}>{other.title}</Link>
+                  <span>{other.challenge}</span>
+                </li>
+              ))}
+          </ul>
           <div className="hero-actions">
             <Button>Discuss a Similar Challenge</Button>
             <Button to="/work" outline>
@@ -1392,6 +1458,17 @@ function Article() {
                   </li>
                 );
               })}
+            </ul>
+          </section>
+          <section>
+            <h2>Keep reading: related guides</h2>
+            <ul className="related-links">
+              {relatedArticles(a).map((r) => (
+                <li key={r.slug}>
+                  <Link to={`/insights/${r.slug}`}>{r.title}</Link>
+                  <span>{r.intro}</span>
+                </li>
+              ))}
             </ul>
           </section>
           <div className="article-end">
@@ -1949,7 +2026,12 @@ function AnalyticsConsent() {
     window._hsq.push(["trackPageView"]);
   }, [consent, hubspot, location.pathname, location.search]);
   useEffect(() => {
-    if (!measurementId || window.stsConsentModeSet) return;
+    // Loaded only after the visitor accepts analytics. Fetching the 178 KiB
+    // Google tag for everyone cost about 110 ms of main-thread blocking on
+    // phones (PageSpeed: Total Blocking Time), and nothing is recorded without
+    // consent anyway. Consent Mode still starts as "denied" and is granted by
+    // the next effect, in this order.
+    if (consent !== "accepted" || !measurementId || window.stsConsentModeSet) return;
     window.dataLayer = window.dataLayer || [];
     window.gtag = window.gtag || function gtag() { window.dataLayer.push(arguments); };
     window.gtag("js", new Date());
@@ -1966,7 +2048,7 @@ function AnalyticsConsent() {
     script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`;
     document.head.appendChild(script);
     window.stsConsentModeSet = true;
-  }, [measurementId]);
+  }, [consent, measurementId]);
   useEffect(() => {
     if (consent !== "accepted" || !measurementId) return;
     window.dataLayer = window.dataLayer || [];
@@ -2077,10 +2159,10 @@ function ChatAssistant() {
   const launcherRef = useRef(null);
   const busy = status === "thinking" || status === "sending";
   useEffect(() => {
-    fetch("/api/chat")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setEnabled(Boolean(d?.enabled)))
-      .catch(() => {});
+    // The server writes <meta name="chat-enabled"> into the page when an OpenAI
+    // key is set, so the button appears right after hydration instead of
+    // waiting for a network round trip (PageSpeed: Speed Index).
+    setEnabled(Boolean(document.querySelector('meta[name="chat-enabled"]')));
   }, []);
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
