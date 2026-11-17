@@ -926,3 +926,14 @@ test("the MCP server card describes the real endpoint", async () => {
   const list = await (await mcp({ jsonrpc: "2.0", id: 1, method: "tools/list" })).json();
   assert.deepEqual(card.tools.map((t) => t.name), list.result.tools.map((t) => t.name));
 });
+
+test("the sitemap is readable: one URL per line", async () => {
+  const xml = await (await fetch(base + "/sitemap.xml")).text();
+  const lines = xml.trimEnd().split("\n");
+  assert.equal(lines[0], '<?xml version="1.0" encoding="UTF-8"?>');
+  assert.match(lines[1], /^<urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">$/);
+  assert.equal(lines.at(-1), "</urlset>");
+  const entries = lines.slice(2, -1);
+  assert.ok(entries.length > 20);
+  for (const line of entries) assert.match(line, /^ {2}<url><loc>[^<]+<\/loc><lastmod>[\d-]+<\/lastmod>.*<\/url>$/);
+});

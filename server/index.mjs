@@ -653,7 +653,8 @@ if (existsSync(path.join(dist, "index.html"))) {
     res
       .type("xml")
       .send(
-        `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...routes.keys()].map((p) => `<url><loc>${escape(process.env.PUBLIC_ORIGIN + p)}</loc><lastmod>${getLastModified(p)}</lastmod><changefreq>${p === "/" ? "weekly" : "monthly"}</changefreq><priority>${p === "/" ? "1.0" : p.split("/").length === 2 ? "0.8" : "0.6"}</priority></url>`).join("")}</urlset>`,
+        // One <url> per line so the file is readable when opened in a browser.
+        `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[...routes.keys()].map((p) => `  <url><loc>${escape(process.env.PUBLIC_ORIGIN + p)}</loc><lastmod>${getLastModified(p)}</lastmod><changefreq>${p === "/" ? "weekly" : "monthly"}</changefreq><priority>${p === "/" ? "1.0" : p.split("/").length === 2 ? "0.8" : "0.6"}</priority></url>\n`).join("")}</urlset>\n`,
       );
   });
   app.use(
