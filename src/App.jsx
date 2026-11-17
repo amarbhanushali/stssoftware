@@ -12,6 +12,7 @@ import {
 import { services, stages, projects, articles, faqs } from "./data.js";
 import { agentTools, runAgentTool } from "./agentTools.js";
 import { examplesForService, guidesForProject, relatedArticles } from "./related.js";
+import { emptyBoot, parseConsent, saveConsent } from "./boot.js";
 import { company, getMetadata } from "./metadata.js";
 
 const paths = {
@@ -36,17 +37,13 @@ const paths = {
   chat: "M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12ZM8 12h.01M12 12h.01M16 12h.01",
   send: "m3 11 18-8-8 18-2-8-8-2Z",
 };
-// Analytics consent. "v2" because the choice now covers HubSpot as well as
-// Google Analytics, so visitors who only agreed to Google Analytics are asked
-// again.
-const consentKey = "sts_analytics_consent_v2";
-const analyticsAllowed = () => {
-  try {
-    return window.localStorage.getItem(consentKey) === "accepted";
-  } catch {
-    return false;
-  }
-};
+// Analytics consent lives in the sts_consent cookie (see src/boot.js) so the
+// server can draw the banner in the HTML. The choice covers Google Analytics
+// and HubSpot together.
+const analyticsAllowed = () => parseConsent(document.cookie) === "accepted";
+// Until yesterday the choice was kept in browser storage under this key; it is
+// carried over once so nobody is asked twice.
+const legacyConsentKey = "sts_analytics_consent_v2";
 // Links the visitor's HubSpot browsing history to the contact the server
 // creates for their enquiry. Only after consent, and only the email address.
 function hubspotIdentify(email) {
@@ -60,6 +57,14 @@ const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 function formatDate(iso) {
   const [y, m, d] = iso.split("-").map(Number);
   return `${d} ${months[m - 1]} ${y}`;
+}
+// False on the server and on the first browser render, true once the page is
+// interactive (after hydration). Used to keep server-drawn buttons switched off
+// until they can actually respond.
+function useReady() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  return ready;
 }
 // Counts taps on the phone number as a GA4 event, only after consent.
 function trackContact(method) {
@@ -733,7 +738,7 @@ function GuideCard({ a }) {
         </h3>
         <p>{a.intro}</p>
         <Link className="text-link" to={`/insights/${a.slug}`}>
-          Read guide <Icon />
+          Read guide<span className="sr-only">: {a.title}</span> <Icon />
         </Link>
       </div>
     </article>
@@ -1863,9 +1868,11 @@ function Policy({ terms = false }) {
               <h2>Technical data</h2>
               <p>
                 A short-lived, first-party security cookie protects form
-                submissions. The service also uses a request identifier to
-                prevent duplicate enquiries and temporary request-rate controls
-                to reduce abuse.
+                submissions. If you answer the analytics banner, a first-party
+                cookie called sts_consent remembers your choice for a year; it
+                holds only the word accepted or denied. The service also uses a
+                request identifier to prevent duplicate enquiries and temporary
+                request-rate controls to reduce abuse.
               </p>
               <h2>How information is used</h2>
               <p>
@@ -1976,23 +1983,34 @@ function PageState() {
   }, [pathname]);
   return null;
 }
-function AnalyticsConsent() {
+function AnalyticsConsent({ boot }) {
   const location = useLocation();
-  // undefined = not read yet. The server cannot see the visitor's choice, so
-  // the first browser render must also show nothing (otherwise React reports
-  // a hydration mismatch); the stored choice is read in an effect.
-  const [consent, setConsent] = useState(undefined);
-  const measurementId = typeof document === "undefined" ? "" : document.querySelector('meta[name="google-analytics-id"]')?.content || "";
+  // The server reads the consent cookie and draws the banner (or not) in the
+  // HTML, and the browser starts from the same value, so the first render
+  // matches and the banner is part of the first paint.
+  const [consent, setConsent] = useState(boot.consent);
+  // The banner is in the server HTML, so it can be tapped before the script has
+  // loaded. Its buttons start disabled (the same on the server and on the first
+  // browser render) and switch on once the page is interactive, so an early tap
+  // is visibly ignored instead of silently lost.
+  const ready = useReady();
+  const measurementId = boot.gaId;
   // "js-na2.hs-scripts.com/248022319", set by the server on the live site only.
-  const hubspot = typeof document === "undefined" ? "" : document.querySelector('meta[name="hubspot-tracking"]')?.content || "";
+  const hubspot = boot.hubspot;
   const hubspotPath = useRef("");
   useEffect(() => {
+    if (boot.consent) return;
     try {
-      setConsent(window.localStorage.getItem(consentKey));
+      const old = window.localStorage.getItem(legacyConsentKey);
+      if (old === "accepted" || old === "denied") {
+        saveConsent(old);
+        setConsent(old);
+      }
+      window.localStorage.removeItem(legacyConsentKey);
     } catch {
-      setConsent(null);
+      /* browser storage unavailable: nothing to carry over */
     }
-  }, []);
+  }, [boot.consent]);
   useEffect(() => {
     if (consent !== "accepted" || !/^js(-[a-z0-9]+)?\.hs-scripts\.com\/\d+$/.test(hubspot)) return;
     const path = location.pathname + location.search;
@@ -2057,16 +2075,12 @@ function AnalyticsConsent() {
     window.gtag("event", "page_view", { page_location: window.location.href, page_path: location.pathname, page_title: document.title });
   }, [consent, measurementId, location.pathname]);
   const decide = (value) => {
-    try {
-      window.localStorage.setItem(consentKey, value);
-    } catch {
-      /* private mode: the choice lasts for this page view only */
-    }
+    saveConsent(value);
     setConsent(value);
   };
   if ((!measurementId && !hubspot) || consent !== null) return null;
   const tools = [measurementId && "Google Analytics", hubspot && "HubSpot"].filter(Boolean).join(" and ");
-  return <aside className="analytics-consent" aria-label="Analytics cookie choice"><p>We use optional {tools} cookies to understand website visits and improve our services. Declining does not affect your enquiry.</p><div><button type="button" className="text-button" onClick={() => decide("denied")}>No thanks</button><button type="button" className="button" onClick={() => decide("accepted")}>Accept analytics</button></div></aside>;
+  return <aside className="analytics-consent" aria-label="Analytics cookie choice"><p>We use optional {tools} cookies to understand website visits and improve our services. Declining does not affect your enquiry.</p><div><button type="button" className="text-button" disabled={!ready} onClick={() => decide("denied")}>No thanks</button><button type="button" className="button" disabled={!ready} onClick={() => decide("accepted")}>Accept analytics</button></div></aside>;
 }
 // WebMCP: offers the site's read-only tools to AI agents running in the
 // visitor's browser (Chrome's document.modelContext; older builds used
@@ -2143,8 +2157,8 @@ const chatTimelines = [
 // AI enquiry assistant. It only appears when the server has an OpenAI key.
 // The AI proposes a draft; the visitor reviews it and sends it through the
 // same /api/enquiries route as the contact form.
-function ChatAssistant() {
-  const [enabled, setEnabled] = useState(false);
+function ChatAssistant({ enabled }) {
+  const ready = useReady();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -2158,12 +2172,6 @@ function ChatAssistant() {
   const inputRef = useRef(null);
   const launcherRef = useRef(null);
   const busy = status === "thinking" || status === "sending";
-  useEffect(() => {
-    // The server writes <meta name="chat-enabled"> into the page when an OpenAI
-    // key is set, so the button appears right after hydration instead of
-    // waiting for a network round trip (PageSpeed: Speed Index).
-    setEnabled(Boolean(document.querySelector('meta[name="chat-enabled"]')));
-  }, []);
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
   }, [messages, draft, status, error]);
@@ -2405,6 +2413,7 @@ function ChatAssistant() {
         type="button"
         className="chat-launcher"
         aria-expanded={open}
+        disabled={!ready}
         onClick={() => (open ? close() : setOpen(true))}
       >
         <Icon name={open ? "close" : "chat"} />
@@ -2413,14 +2422,16 @@ function ChatAssistant() {
     </>
   );
 }
-export default function App() {
+// `boot` is what the first render needs to know (src/boot.js); the server and
+// the browser both pass the same values.
+export default function App({ boot = emptyBoot }) {
   return (
     <>
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
       <PageState />
-      <AnalyticsConsent />
+      <AnalyticsConsent boot={boot} />
       <Header />
       <main id="main-content">
         <Routes>
@@ -2442,7 +2453,7 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
-      <ChatAssistant />
+      <ChatAssistant enabled={boot.chat} />
       <AgentTools />
     </>
   );

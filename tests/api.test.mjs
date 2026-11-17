@@ -1118,8 +1118,14 @@ test("static files carry long cache lifetimes where it is safe", async () => {
   const css = home.match(/href="(\/assets\/[^"]+\.css)"/)[1];
   for (const file of [js, css])
     assert.equal((await fetch(base + file)).headers.get("cache-control"), "public, max-age=31536000, immutable", file);
-  for (const font of ["/fonts/inter-latin.woff2", "/fonts/jakarta-latin.woff2"])
-    assert.equal((await fetch(base + font)).headers.get("cache-control"), "public, max-age=2592000", font);
+  // The fonts are built into /assets with hashed names, so they get the year too.
+  const stylesheet = await (await fetch(base + css)).text();
+  const fonts = [...stylesheet.matchAll(/url\((\/assets\/[^)]+\.woff2)\)/g)].map((m) => m[1]);
+  assert.equal(fonts.length, 2, "two fonts are referenced by the stylesheet");
+  for (const font of fonts) {
+    assert.match(font, /-[A-Za-z0-9_-]{6,}\.woff2$/, "font file name has a content hash");
+    assert.equal((await fetch(base + font)).headers.get("cache-control"), "public, max-age=31536000, immutable", font);
+  }
   // Un-hashed files and pages must not be cached for a year.
   assert.equal((await fetch(base + "/sts-logo.png")).headers.get("cache-control"), "public, max-age=3600");
   assert.doesNotMatch((await fetch(base + "/")).headers.get("cache-control") || "", /immutable|31536000/);
@@ -1127,8 +1133,14 @@ test("static files carry long cache lifetimes where it is safe", async () => {
 
 test("fonts are preloaded and the logo is served at its displayed size", async () => {
   const html = await (await fetch(base + "/")).text();
-  for (const font of ["inter", "jakarta"])
-    assert.match(html, new RegExp(`<link rel="preload" href="/fonts/${font}-latin\\.woff2" as="font" type="font/woff2" crossorigin`));
+  // The preload must name exactly the file the stylesheet asks for, or the browser fetches the font twice.
+  const css = html.match(/href="(\/assets\/[^"]+\.css)"/)[1];
+  const stylesheet = await (await fetch(base + css)).text();
+  for (const font of ["inter", "jakarta"]) {
+    const preload = html.match(new RegExp(`<link rel="preload" href="(/assets/${font}-latin-[A-Za-z0-9_-]+\\.woff2)" as="font" type="font/woff2" crossorigin`));
+    assert.ok(preload, `${font} font is preloaded`);
+    assert.ok(stylesheet.includes(`url(${preload[1]})`), `${font} preload matches the stylesheet`);
+  }
   // Header and footer (150px wide) use the 300px logo; the 600px original stays for emails,
   // structured data and the About page, where the logo is shown up to 360px wide.
   for (const route of ["/", "/services", "/contact"]) {
@@ -1205,4 +1217,69 @@ test("links with different destinations have different accessible names", async 
     for (const [href, name] of names) assert.match(name, /Explore service.*:/, `${href} name: ${name}`);
     assert.equal(new Set(names.map(([, name]) => name)).size, new Set(names.map(([href]) => href)).size, `${route}: same name for different links`);
   }
+});
+
+test("the consent cookie is read the same way everywhere", async () => {
+  const { parseConsent } = await import("../src/boot.js");
+  assert.equal(parseConsent(undefined), null);
+  assert.equal(parseConsent(""), null);
+  assert.equal(parseConsent("sts_consent=accepted"), "accepted");
+  assert.equal(parseConsent("a=1; sts_consent=denied; b=2"), "denied");
+  assert.equal(parseConsent("sts_consent=maybe"), null, "only accepted or denied count");
+  assert.equal(parseConsent("xsts_consent=accepted"), null, "another cookie's name does not match");
+  assert.equal(parseConsent("sts_consent=accepted-and-more"), null);
+});
+
+test("the cookie banner and chat button are drawn into the HTML for first-time visitors only", async () => {
+  const live = await startServer({ ...serverEnv, GOOGLE_ANALYTICS_ID: "G-TEST123456" });
+  const page = async (cookie) =>
+    fetch(`${live.url}/services`, { headers: cookie ? { Cookie: cookie } : {} });
+  try {
+    // First visit: banner and chat button are in the HTML, so they are part of the first paint.
+    const first = await page();
+    // React separates adjacent text pieces with invisible <!-- --> markers.
+    const html = (await first.text()).replace(/<!-- -->/g, "");
+    assert.match(html, /<aside class="analytics-consent" aria-label="Analytics cookie choice">/);
+    assert.match(html, /We use optional Google Analytics cookies/);
+    assert.match(html, /<button[^>]*class="chat-launcher"/);
+    // They can be tapped before the script loads, so they start disabled and the
+    // browser enables them once the page is interactive (see useReady in App.jsx).
+    assert.match(html, /<button[^>]*class="text-button"[^>]*disabled=""[^>]*>No thanks/);
+    assert.match(html, /<button[^>]*class="button"[^>]*disabled=""[^>]*>Accept analytics/);
+    assert.match(html, /<button[^>]*class="chat-launcher"[^>]*disabled=""/);
+    assert.match(html, /<meta name="google-analytics-id" content="G-TEST123456"\/>/);
+    assert.match(first.headers.get("vary"), /Cookie/i, "caches must not mix visitors");
+    assert.match(first.headers.get("vary"), /Accept/i);
+    // A returning visitor who already chose gets no banner, either way they chose.
+    for (const choice of ["accepted", "denied"]) {
+      const again = await (await page(`sts_consent=${choice}`)).text();
+      assert.doesNotMatch(again, /analytics-consent/, choice);
+      assert.match(again, /class="chat-launcher"/, "the chat button does not depend on consent");
+    }
+    // An unrelated or unknown cookie value counts as no choice.
+    assert.match(await (await page("sts_consent=maybe; other=1")).text(), /analytics-consent/);
+    // A page that does not exist carries no analytics, so no banner.
+    assert.doesNotMatch(await (await fetch(`${live.url}/no-such-page`)).text(), /analytics-consent/);
+  } finally {
+    const done = new Promise((resolve) => live.proc.once("exit", resolve));
+    live.proc.kill();
+    await done;
+  }
+  // Without analytics configured and without an OpenAI key there is nothing to draw.
+  const bare = await startServer({ ...serverEnv, OPENAI_API_KEY: "", GOOGLE_ANALYTICS_ID: "" });
+  try {
+    const html = await (await fetch(`${bare.url}/services`)).text();
+    assert.doesNotMatch(html, /analytics-consent|chat-launcher/);
+  } finally {
+    const done = new Promise((resolve) => bare.proc.once("exit", resolve));
+    bare.proc.kill();
+    await done;
+  }
+});
+
+test("guide cards have distinct accessible names", async () => {
+  const html = (await (await fetch(base + "/")).text()).replace(/<!-- -->/g, "");
+  const cards = [...html.matchAll(/<a class="text-link" href="(\/insights\/[^"]+)" data-discover="true">Read guide<span class="sr-only">: ([^<]+)<\/span>/g)];
+  assert.ok(cards.length >= 3, "the home page lists guides with named links");
+  assert.equal(new Set(cards.map((c) => c[2])).size, cards.length);
 });

@@ -48,6 +48,7 @@ import { googleVerification } from "./verification.mjs";
 import { dataDirWarnings } from "./datadir.mjs";
 import { handleMcp, serverCard } from "./mcp.mjs";
 import { htmlToMarkdown } from "./markdown.mjs";
+import { parseConsent } from "../src/boot.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // Always a full path, so the startup log shows exactly where enquiries live.
@@ -680,32 +681,49 @@ if (existsSync(path.join(dist, "index.html"))) {
       index: false,
       dotfiles: "deny",
       maxAge: "1h",
-      // Vite puts a content hash in every file name under /assets, so those
-      // files never change and can be cached for a year. Fonts keep their
-      // names, so they get 30 days. Everything else stays at one hour.
+      // Vite puts a content hash in every file name under /assets (scripts,
+      // styles and the fonts), so those files never change and can be cached
+      // for a year. Everything else stays at one hour.
       setHeaders(res, file) {
         const relative = path.relative(dist, file).split(path.sep).join("/");
         if (relative.startsWith("assets/"))
           res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-        else if (relative.startsWith("fonts/"))
-          res.setHeader("Cache-Control", "public, max-age=2592000");
       },
     }),
   );
   app.get("/{*splat}", (req, res) => {
     const pathname = req.path.replace(/\/$/, "") || "/";
     const found = routes.has(pathname);
+    // What the first render needs to know, drawn into the HTML so the cookie
+    // banner and the chat button are part of the first paint (src/boot.js).
+    // The meta tags below are written from these same values, and the browser
+    // reads them back, so server and browser always start identically.
+    const siteOrigin = process.env.PUBLIC_ORIGIN?.replace(/\/$/, "");
+    const boot = {
+      consent: parseConsent(req.headers.cookie),
+      gaId:
+        siteOrigin && found && /^G-[A-Z0-9]+$/i.test(process.env.GOOGLE_ANALYTICS_ID || "")
+          ? process.env.GOOGLE_ANALYTICS_ID
+          : "",
+      hubspot:
+        siteOrigin && found && hubspotTrackingOn
+          ? `${hubspotTracking.scriptHost}/${hubspotTracking.portalId}`
+          : "",
+      chat: chatEnabled(),
+    };
     // The same URL serves HTML to browsers and Markdown to agents that ask
-    // for it, so caches must key on Accept. The Link header points agents at
-    // the site summary and the sitemap (RFC 8288).
+    // for it, and the HTML depends on the consent cookie, so caches must key
+    // on both. The Link header points agents at the site summary and the
+    // sitemap (RFC 8288).
     res.vary("Accept");
+    res.vary("Cookie");
     res.set(
       "Link",
       '</llms.txt>; rel="describedby"; type="text/markdown", </sitemap.xml>; rel="sitemap"; type="application/xml"',
     );
     if (req.accepts(["html", "text/markdown"]) === "text/markdown") {
       const site = process.env.PUBLIC_ORIGIN?.replace(/\/$/, "") || "";
-      let markdown = htmlToMarkdown(render(req.originalUrl), site);
+      let markdown = htmlToMarkdown(render(req.originalUrl, boot), site);
       if (site && found) markdown += `\n\n---\nSource: ${site}${pathname}`;
       return res
         .status(found ? 200 : 404)
@@ -719,7 +737,7 @@ if (existsSync(path.join(dist, "index.html"))) {
     let html = template
       .replace(
         '<div id="root"></div>',
-        `<div id="root">${render(req.originalUrl)}</div>`,
+        `<div id="root">${render(req.originalUrl, boot)}</div>`,
       )
       .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
       .replace(
@@ -739,14 +757,14 @@ if (existsSync(path.join(dist, "index.html"))) {
       head.push(`<meta property="og:type" content="website"/><meta property="og:site_name" content="Samarth Tech Software"/><meta property="og:title" content="${title}"/><meta property="og:description" content="${escape(metadata.description)}"/><meta property="og:url" content="${escape(pageUrl)}"/><meta property="og:image" content="${escape(imageUrl)}"/><meta property="og:locale" content="en_IN"/><meta property="og:image:alt" content="Samarth Tech Software logo"/><meta name="twitter:card" content="summary"/><meta name="twitter:title" content="${title}"/><meta name="twitter:description" content="${escape(metadata.description)}"/><meta name="twitter:image" content="${escape(imageUrl)}"/><script type="application/ld+json">${structuredData}</script>`);
       if (siteVerification.token)
         head.push(`<meta name="google-site-verification" content="${escape(siteVerification.token)}"/>`);
-      if (hubspotTrackingOn)
-        head.push(`<meta name="hubspot-tracking" content="${escape(`${hubspotTracking.scriptHost}/${hubspotTracking.portalId}`)}"/>`);
-      if (/^G-[A-Z0-9]+$/i.test(process.env.GOOGLE_ANALYTICS_ID || ""))
-        head.push(`<meta name="google-analytics-id" content="${escape(process.env.GOOGLE_ANALYTICS_ID)}"/>`);
+      if (boot.hubspot)
+        head.push(`<meta name="hubspot-tracking" content="${escape(boot.hubspot)}"/>`);
+      if (boot.gaId)
+        head.push(`<meta name="google-analytics-id" content="${escape(boot.gaId)}"/>`);
     }
-    // Tells the page the chat assistant is available, so the button needs no
-    // network request before it can appear.
-    if (chatEnabled()) head.push('<meta name="chat-enabled" content="1"/>');
+    // Tells the browser the chat assistant is available (the server draws the
+    // button into the HTML from the same value).
+    if (boot.chat) head.push('<meta name="chat-enabled" content="1"/>');
     if (!found) head.push('<meta name="robots" content="noindex"/>');
     html = html.replace("</head>", `${head.join("")}</head>`);
     res
