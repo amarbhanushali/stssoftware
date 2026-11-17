@@ -132,6 +132,24 @@ const hubspotScripts = hubspotTrackingOn
 const hubspotBeacons = hubspotTrackingOn
   ? ["https://*.hubspot.com", "https://*.hs-banner.com"]
   : [];
+// One address for the whole site: www.<domain> permanently redirects to
+// PUBLIC_ORIGIN, so Google, links and bookmarks all converge on a single URL
+// instead of splitting between two. The target is always the fixed
+// PUBLIC_ORIGIN plus the request path, never a value taken from the request.
+const canonicalHost = (() => {
+  try {
+    return new URL(process.env.PUBLIC_ORIGIN).hostname;
+  } catch {
+    return "";
+  }
+})();
+app.use((req, res, next) => {
+  if (!canonicalHost || req.hostname !== `www.${canonicalHost}` || !req.originalUrl.startsWith("/"))
+    return next();
+  // 308 keeps the method and body of non-GET requests such as form posts.
+  const status = req.method === "GET" || req.method === "HEAD" ? 301 : 308;
+  res.redirect(status, `${process.env.PUBLIC_ORIGIN.replace(/\/$/, "")}${req.originalUrl}`);
+});
 app.use(
   helmet({
     contentSecurityPolicy: {

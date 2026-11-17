@@ -937,3 +937,63 @@ test("the sitemap is readable: one URL per line", async () => {
   assert.ok(entries.length > 20);
   for (const line of entries) assert.match(line, /^ {2}<url><loc>[^<]+<\/loc><lastmod>[\d-]+<\/lastmod>.*<\/url>$/);
 });
+
+test("favicon.ico and the Apple touch icon exist and are declared", async () => {
+  const ico = await fetch(base + "/favicon.ico");
+  assert.equal(ico.status, 200);
+  assert.match(ico.headers.get("content-type"), /icon/);
+  const bytes = Buffer.from(await ico.arrayBuffer());
+  assert.deepEqual([...bytes.subarray(0, 6)], [0, 0, 1, 0, 3, 0], "ICO header with 3 images");
+  const touch = await fetch(base + "/apple-touch-icon.png");
+  assert.equal(touch.status, 200);
+  assert.match(touch.headers.get("content-type"), /image\/png/);
+  const png = Buffer.from(await touch.arrayBuffer());
+  assert.equal(png.readUInt32BE(16), 180);
+  assert.equal(png.readUInt32BE(20), 180);
+  assert.ok(png.length < 100_000, "touch icon stays small");
+  const html = await (await fetch(base + "/")).text();
+  assert.match(html, /<link rel="icon" href="\/favicon\.ico" sizes="48x48"\/>/);
+  assert.match(html, /<link rel="icon" type="image\/svg\+xml" href="\/favicon\.svg" sizes="any"\/>/);
+  assert.match(html, /<link rel="apple-touch-icon" href="\/apple-touch-icon\.png"\/>/);
+});
+
+test("www redirects permanently to the main address and nothing else does", async () => {
+  const { request } = await import("node:http");
+  const live = await startServer({ ...serverEnv, PUBLIC_ORIGIN: "https://stssoftware.in" });
+  // fetch() cannot set the Host header, so use raw HTTP.
+  const hit = (method, requestPath, host) =>
+    new Promise((resolve, reject) => {
+      const url = new URL(live.url);
+      const req = request(
+        { host: url.hostname, port: url.port, method, path: requestPath, headers: { Host: host } },
+        (res) => {
+          res.resume();
+          resolve({ status: res.statusCode, location: res.headers.location });
+        },
+      );
+      req.on("error", reject);
+      req.end();
+    });
+  try {
+    assert.deepEqual(await hit("GET", "/services?x=1", "www.stssoftware.in"), {
+      status: 301,
+      location: "https://stssoftware.in/services?x=1",
+    });
+    assert.equal((await hit("HEAD", "/", "www.stssoftware.in")).status, 301);
+    // Non-GET requests keep their method and body (308), for example a form post.
+    assert.deepEqual(await hit("POST", "/api/enquiries", "www.stssoftware.in"), {
+      status: 308,
+      location: "https://stssoftware.in/api/enquiries",
+    });
+    // The target is always the fixed main address, whatever the path looks like.
+    assert.equal((await hit("GET", "//evil.example/x", "www.stssoftware.in")).location, "https://stssoftware.in//evil.example/x");
+    assert.equal((await hit("GET", "/", "stssoftware.in")).status, 200);
+    assert.equal((await hit("GET", "/", "www.other.example")).status, 200);
+  } finally {
+    const done = new Promise((resolve) => live.proc.once("exit", resolve));
+    live.proc.kill();
+    await done;
+  }
+  // Local and test setups (no www host) are never redirected.
+  assert.equal((await fetch(base + "/")).status, 200);
+});
