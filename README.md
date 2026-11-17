@@ -110,7 +110,7 @@ The contact form includes an optional WhatsApp consent checkbox. When it is sele
 
 Then set `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_RECIPIENT_NUMBER` (your own WhatsApp number with country code, for example `919876543210`), `WHATSAPP_TEAM_TEMPLATE=sts_new_enquiry`, and `WHATSAPP_WELCOME_TEMPLATE=sts_welcome` in Hostinger Environment Variables. Redeploy after saving. Keep the access token private. The application uses templates because a website enquiry does not itself open a WhatsApp customer-service conversation.
 
-Set `PUBLIC_ORIGIN` to the final origin, without a trailing slash, for canonical URLs and the sitemap. In production use HTTPS, `NODE_ENV=production`, a persistent `DATA_DIR`, and a process manager. Behind a reverse proxy (Caddy, Nginx, Hostinger) set `TRUST_PROXY=1` (the number of proxy hops); without it every visitor shares the proxy's IP address and one rate limit.
+Set `PUBLIC_ORIGIN` to the final origin, without a trailing slash, for canonical URLs and the sitemap. In production use HTTPS, `NODE_ENV=production`, a persistent `DATA_DIR`, and a process manager. On Hostinger set `DATA_DIR` to a **full path outside the web folder and outside the deployment**, for example `/home/<user>/sts-data` (with the leading `/`): a relative value is created inside the build folder that every deploy replaces, and a folder under `public_html` is the web server's public folder. The startup log prints the real path (`Data: enquiries are stored in …`) and warns about both mistakes. Behind a reverse proxy (Caddy, Nginx, Hostinger) set `TRUST_PROXY=1` (the number of proxy hops); without it every visitor shares the proxy's IP address and one rate limit.
 
 ## Google SEO and lead setup
 

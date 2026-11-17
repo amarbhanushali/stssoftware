@@ -997,3 +997,51 @@ test("www redirects permanently to the main address and nothing else does", asyn
   // Local and test setups (no www host) are never redirected.
   assert.equal((await fetch(base + "/")).status, 200);
 });
+
+test("risky DATA_DIR choices are explained in the startup log", async () => {
+  const { dataDirWarnings } = await import("../server/datadir.mjs");
+  assert.deepEqual(dataDirWarnings(undefined, "/app/server/data"), []);
+  assert.deepEqual(dataDirWarnings("/home/u1/sts-data", "/home/u1/sts-data"), []);
+  const relative = dataDirWarnings(
+    "home/u1/domains/site/public_html/",
+    "/home/u1/domains/site/hbuilds/versions/abc/nodejs/home/u1/domains/site/public_html",
+  );
+  assert.equal(relative.length, 3, "relative, build folder and public_html");
+  assert.match(relative[0], /relative path \(no leading "\/"\).*full path/);
+  assert.match(relative[1], /replaced on every deploy/);
+  assert.match(relative[2], /public_html.*downloaded/);
+  assert.equal(dataDirWarnings("/var/www/public_html/data", "/var/www/public_html/data").length, 1);
+  assert.equal(dataDirWarnings("C:\\sites\\hbuilds\\versions\\x\\data", "C:\\sites\\hbuilds\\versions\\x\\data").length, 1);
+  assert.equal(dataDirWarnings("/home/u1/my_public_html_backup", "/home/u1/my_public_html_backup").length, 0);
+
+  // A real start-up with the mistake from production: a relative DATA_DIR.
+  const { spawn } = await import("node:child_process");
+  const relativeDir = `sts-relative-test-${randomUUID().slice(0, 8)}`;
+  const proc = spawn(process.execPath, ["server/index.mjs"], {
+    env: { ...serverEnv, DATA_DIR: relativeDir },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let out = "";
+  let err = "";
+  proc.stdout.on("data", (d) => (out += d));
+  proc.stderr.on("data", (d) => (err += d));
+  try {
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(Error("server did not start")), 15000);
+      proc.stdout.on("data", () => {
+        if (out.includes("STS website running")) {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+    });
+    const full = path.resolve(relativeDir);
+    assert.ok(out.includes(`Data: enquiries are stored in ${full}`), "log shows the full path");
+    assert.match(err, /Data: WARNING DATA_DIR "sts-relative-test-[0-9a-f]+" is a relative path/);
+  } finally {
+    const done = new Promise((resolve) => proc.once("exit", resolve));
+    proc.kill();
+    await done;
+    rmSync(path.resolve(relativeDir), { recursive: true, force: true });
+  }
+});

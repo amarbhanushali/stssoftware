@@ -45,11 +45,13 @@ import {
 } from "./hubspot.mjs";
 import { createFollowUps } from "./followup.mjs";
 import { googleVerification } from "./verification.mjs";
+import { dataDirWarnings } from "./datadir.mjs";
 import { handleMcp, serverCard } from "./mcp.mjs";
 import { htmlToMarkdown } from "./markdown.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const dataDir = process.env.DATA_DIR || path.join(root, "server", "data");
+// Always a full path, so the startup log shows exactly where enquiries live.
+const dataDir = path.resolve(process.env.DATA_DIR || path.join(root, "server", "data"));
 mkdirSync(dataDir, { recursive: true });
 const db = new DatabaseSync(path.join(dataDir, "enquiries.sqlite"));
 db.exec("PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;");
@@ -105,10 +107,8 @@ function loadSecret() {
 }
 const secret = loadSecret();
 console.log(`Data: enquiries are stored in ${dataDir}`);
-if (/[\\/]hbuilds[\\/]versions[\\/]/.test(dataDir))
-  console.error(
-    "Data: WARNING the data folder is inside this deployment's build folder, so enquiries may not survive the next deploy. Set DATA_DIR to a folder outside it, for example /home/<user>/sts-data.",
-  );
+for (const warning of dataDirWarnings(process.env.DATA_DIR, dataDir))
+  console.error(`Data: WARNING ${warning}`);
 const app = express();
 app.disable("x-powered-by");
 // Behind Caddy/Nginx/Hostinger every request arrives from the proxy, so the
