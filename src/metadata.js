@@ -75,8 +75,8 @@ export const pages = new Map([
   [
     "/case-studies",
     page(
-      "Case Studies – Software We Have Built",
-      "Anonymised case studies from real projects: a university portal, a booking system, a shipping website and more, described by what they do and how they are built.",
+      "Case Studies – Projects We Have Worked On",
+      "Anonymised case studies from real projects: a university portal, a booking system, a shipping website and more, shown by what they do and how they are built.",
     ),
   ],
   [

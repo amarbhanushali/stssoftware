@@ -1301,17 +1301,38 @@ test("case studies are complete, anonymised, and the draft stays out of the data
     assert.ok(c.services.length >= 1 && c.services.every((s) => serviceSlugs.has(s)), `${c.slug}: services`);
     const text = [c.title, c.sector, c.intro, c.overview, c.quality, ...c.features, ...c.stack].join(" ");
     assert.doesNotMatch(text, withheldNames, `${c.slug} names a client`);
+    // Website addresses are withheld too.
+    assert.doesNotMatch(text, /https?:\/\/|www\.|\b[a-z0-9-]+\.(com|in|ae|org|net|co|io)\b/i, `${c.slug} has a web address`);
     // No invented results: these are the words an unproven claim would use.
     assert.doesNotMatch(text, /\b\d+\s?%|\b\d[\d,]*\+? (users|students|customers|clients)\b|increased|reduced|saved (time|hours|days|money|costs?|\d)|doubled|guarantee/i, `${c.slug} states a result`);
   }
-  assert.deepEqual(caseStudies.filter((c) => c.draft).map((c) => c.slug), ["uae-electronics-online-store"]);
-  assert.equal(publishedCaseStudies.length, caseStudies.length - 1);
+  // Drafts must not live in this file: everything in data.js is bundled into the JavaScript
+  // every visitor downloads, so a hidden draft there would still be public.
+  assert.ok(!caseStudies.some((c) => c.draft), "no draft entries in shipped data");
+  assert.equal(publishedCaseStudies.length, caseStudies.length);
+  assert.equal(caseStudies.length, 7);
+});
+
+test("the built JavaScript contains no draft case study and no client name", async () => {
+  const { readdirSync } = await import("node:fs");
+  const files = [
+    ...readdirSync("dist/assets").filter((f) => f.endsWith(".js")).map((f) => `dist/assets/${f}`),
+    "server/rendered/render.js",
+  ];
+  assert.ok(files.length >= 2);
+  // Long names only: short tokens such as "nmc" could match inside minified code.
+  const bundleNames = /arunodaya|faroce|nourayni|vanguard|urrza|silmar|caerus|engage ?stores|engagestores|swachh/i;
+  for (const file of files) {
+    const code = readFileSync(file, "utf8");
+    assert.doesNotMatch(code, bundleNames, `${file} contains a withheld client name`);
+    assert.doesNotMatch(code, /uae-electronics-online-store|electronics retailer in the UAE|WoodMart/i, `${file} contains the draft case study`);
+  }
 });
 
 test("case study pages are published, labelled and linked; the draft does not exist anywhere", async () => {
   const { publishedCaseStudies } = await import("../src/data.js");
   const index = await (await fetch(base + "/case-studies")).text();
-  assert.match(index, /<h1>Software we have built<\/h1>/);
+  assert.match(index, /<h1>Projects we have worked on<\/h1>/);
   assert.match(index, /Client names are withheld/);
   assert.doesNotMatch(index, withheldNames);
   const sitemap = await (await fetch(base + "/sitemap.xml")).text();
@@ -1342,12 +1363,12 @@ test("case study pages are published, labelled and linked; the draft does not ex
 test("service pages and the Work page lead to the case studies", async () => {
   const webApps = (await (await fetch(base + "/services/web-applications")).text()).replace(/<!-- -->/g, "");
   assert.match(webApps, /CASE STUDIES/);
-  assert.match(webApps, /Projects we have built/);
+  assert.match(webApps, /Projects we have worked on/);
   const linked = new Set([...webApps.matchAll(/href="\/case-studies\/([a-z0-9-]+)"/g)].map((m) => m[1]));
   assert.ok(linked.size >= 1 && linked.size <= 3, `service page links ${linked.size} case studies`);
   assert.match(webApps, /href="\/case-studies"[^>]*>All case studies/);
-  // WordPress has only the hidden draft, so no empty block appears.
-  assert.doesNotMatch(await (await fetch(base + "/services/wordpress")).text(), /Projects we have built/);
+  // No published case study belongs to WordPress yet, so no empty block appears.
+  assert.doesNotMatch(await (await fetch(base + "/services/wordpress")).text(), /Projects we have worked on/);
   const work = await (await fetch(base + "/work")).text();
   assert.match(work, /href="\/case-studies"[^>]*>See Real Case Studies/);
   assert.match(work, /not client case studies/, "the illustrative examples keep their disclaimer");

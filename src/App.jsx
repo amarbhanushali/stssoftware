@@ -837,7 +837,7 @@ function ServiceDetail() {
           <div className="container narrow">
             <SectionHeading
               eyebrow="CASE STUDIES"
-              title="Projects we have built"
+              title="Projects we have worked on"
               description="Real projects, with client details withheld."
             />
             <ul className="related-links">
@@ -1211,7 +1211,7 @@ function CaseStudies() {
     <>
       <Hero
         eyebrow="Case Studies"
-        title="Software we have built"
+        title="Projects we have worked on"
         description="Real projects, described by what they do and how they are built. Client names are withheld, and we claim no results or user numbers, because we publish measured results only with the client's permission."
       />
       <section className="section">
@@ -1242,7 +1242,7 @@ function CaseStudyDetail() {
         <div className="container narrow">
           <h2>What it is</h2>
           <p className="lead">{c.overview}</p>
-          <h2>What we built</h2>
+          <h2>What it does</h2>
           <ul className="check-list">
             {c.features.map((f) => (
               <li key={f}>

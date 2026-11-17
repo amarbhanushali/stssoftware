@@ -840,8 +840,9 @@ export const faqs = [
 // built. Client names, logos, screenshots and website addresses are withheld,
 // and no results or user numbers are claimed: measured results are published
 // only with the client's permission. Every feature below is evidenced by a file
-// in the project's repository. `draft: true` keeps a case study off the site
-// until the owner has confirmed STS's exact role.
+// in the project's repository. Drafts are NOT kept in this file: everything in
+// data.js is bundled into the JavaScript every visitor downloads, so a draft here
+// would be public. Unconfirmed ones live in docs/draft-case-studies.md.
 export const caseStudies = [
   {
     slug: "university-student-portal",
@@ -860,7 +861,7 @@ export const caseStudies = [
       "Certificates such as transcripts, final, provisional, migration, bonafide and consolidated, with QR codes and barcodes",
       "Student ID cards with barcode and QR printing",
       "Fees and transactions, courier tracking, library content, news and notifications",
-      "PhD records, including notifications and provisional and degree certificates",
+      "Research-degree records, including notifications and certificates",
       "A student portal for the profile, hall ticket, ID card and results",
       "Role-based access, so each admin or study centre sees only the modules their role allows, with a restricted role for result-only centres",
     ],
@@ -882,14 +883,14 @@ export const caseStudies = [
       "Mentor profiles and a search for business owners, with a wishlist of mentors",
       "A two-step mentor sign-up, mentor articles, and a view of each person's own transactions",
       "Projects that mentors can apply to, with status changes handled by the admin team",
-      "A business assessment and fee calculator whose result is emailed to the person who filled it in",
-      "An AI-assisted advisor chat and expert validation that suggests a matching mentor",
-      "Online checkout with Razorpay: the price is worked out on the server and the payment is confirmed by the payment provider",
+      "A fee calculator form that emails the person who submits it a breakdown, and a business assessment whose submissions go to the admin team",
+      "An AI-assisted chat that helps match a business owner with a suitable mentor",
+      "Online checkout through a payment gateway: the price is worked out on the server and the payment is confirmed by the payment provider",
       "An admin panel for mentors, business owners, transactions, articles, campaigns, projects and survey submissions, with exports",
     ],
-    stack: ["PHP", "Laravel 10", "Laravel Sanctum", "Razorpay", "DataTables", "AdminLTE", "PHPUnit"],
+    stack: ["PHP", "Laravel 10", "Laravel Sanctum", "Payment gateway integration", "DataTables", "AdminLTE", "PHPUnit"],
     quality:
-      "Automated tests cover the advisor chat, expert validation, survey submissions and the fee calculator.",
+      "Automated tests cover the chat, the mentor matching, survey submissions and the fee calculator.",
   },
   {
     slug: "shipping-company-website-cms",
@@ -918,10 +919,10 @@ export const caseStudies = [
     title: "An online booking system for a wellness business",
     sector: "Health and wellness",
     intro:
-      "Customers book sessions online, therapists run their day from their own portal, and the admin team manages bookings, services, schedules and reminders.",
+      "Customers can book sessions online, therapists can run their day from their own portal, and admins manage bookings while reminders go out automatically.",
     services: ["web-applications", "custom-software"],
     overview:
-      "An online booking system for a wellness business. Customers choose a service and a time on the website, therapists see and run their day in their own portal, and the admin team manages bookings, services and practitioners.",
+      "An online booking system for a wellness business. Customers can choose a service and a time on the website, therapists can see and run their day in their own portal, and the admin team manages bookings, services and practitioners.",
     features: [
       "A booking flow for service, session length and place, ending in a confirmation page",
       "An availability engine: working hours, minus leave, existing bookings with a rest gap, and events already in Google Calendar",
@@ -951,11 +952,11 @@ export const caseStudies = [
       "Case-study management: create, edit, reorder, draft or publish, with an SEO title and description",
       "Hero and thumbnail images, and a multi-image gallery with alt text and ordering",
       "A preview of a case study before it is saved",
-      "A media library to upload, edit and delete files, with file type and size limits",
+      "A media library to upload, edit and delete files, with a file size limit",
       "Admin login and a dashboard",
     ],
     stack: ["PHP", "Laravel 12", "Blade", "Vite", "jQuery carousels", "PHPUnit"],
-    quality: "Uploads are checked on the server for image type and size.",
+    quality: "Case-study image uploads are checked on the server for image type and size.",
   },
   {
     slug: "data-centre-services-website-cms",
@@ -987,40 +988,19 @@ export const caseStudies = [
       "An admin application for receiving, routing, escalating and closing complaints, with departments, feedback ratings, SMS alerts, charts and reports.",
     services: ["custom-software", "web-applications"],
     overview:
-      "A web application for an organisation to receive, route and close complaints. Complaints go to departments, an escalation matrix and escalation reports support follow-up, and the people who complained can rate the handling. The code dates from 2020.",
+      "A web application for an organisation to receive, route and close complaints. Complaints go to departments, an escalation matrix and escalation reports support follow-up, and the people who complained can rate the handling.",
     features: [
       "Complaint handling: view, transfer, reply, block and print, with a map view",
       "A dashboard with charts, plus departments, roles and user levels",
       "An escalation matrix with escalation reports",
       "Feedback and ratings from the people who raised complaints, with average ratings by employee",
-      "Reports for pending complaints by department, closing analysis, show-cause notices and the top ten grievances, with Excel export",
-      "SMS notifications through a gateway, and scheduled jobs that close complaints automatically",
-      "Synchronisation with an external complaint platform, and a login service for a mobile app",
+      "Reports for pending complaints by department, closing analysis, notices and the top ten grievances, with Excel export",
+      "SMS notifications through a gateway, and jobs that escalate complaints and close those that another system reports as resolved",
+      "Complaint status kept in step with another system, and a login web service for use by a mobile app",
     ],
     stack: ["PHP", "Zend Framework 1", "jQuery", "Highcharts", "Apache"],
     quality:
       "It was built on Zend Framework 1, which no longer receives updates. Before extending it today, we would first move it to a supported framework.",
-  },
-  {
-    slug: "uae-electronics-online-store",
-    draft: true,
-    title: "An online electronics store built on WooCommerce",
-    sector: "E-commerce",
-    intro:
-      "A WooCommerce store for an electronics retailer in the UAE, with card payments, shipping rates, warranty claims and a multilingual front end.",
-    services: ["wordpress", "website-development"],
-    overview:
-      "A WooCommerce online store for an electronics retailer in the UAE, running on WordPress with a commercial store theme and a child theme.",
-    features: [
-      "A WooCommerce product catalogue with a commercial store theme and a child theme",
-      "Card payments through Stripe and shipping rates through Shippo",
-      "A warranty claim flow and the UAE dirham currency symbol",
-      "SEO set-up with Yoast and a Google Merchant and Ads product feed, plus analytics",
-      "A multilingual front end, and social login",
-      "Page and object caching with WP Rocket and Redis, and image optimisation",
-    ],
-    stack: ["WordPress", "WooCommerce", "WoodMart child theme", "Stripe", "Shippo", "Yoast SEO", "WP Rocket", "Redis"],
-    quality: "",
-  },
+  }
 ];
-export const publishedCaseStudies = caseStudies.filter((c) => !c.draft);
+export const publishedCaseStudies = caseStudies;
