@@ -143,11 +143,8 @@ a:hover {
 .three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-/* A single card left on the last row sits in the middle column.
-   Insights articles keep reading order and stay left-aligned. */
-.three > .card:not(.article-card):last-child:nth-child(3n + 1) {
-  grid-column: 2;
-}
+/* A single card left on the last row stays in the first column (left-aligned),
+   so every three-column grid reads in the same order. */
 .two {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -2034,9 +2031,6 @@ footer {
   }
   .three {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .three > .card:not(.article-card):last-child:nth-child(3n + 1) {
-    grid-column: auto;
   }
   .process-strip {
     grid-template-columns: repeat(3, 1fr);

@@ -835,3 +835,192 @@ export const faqs = [
     "We do not disappear. Before launch we agree how updates, fixes and support will work, so you always know who to call and what is covered.",
   ],
 ];
+
+// Case studies: real projects, described by what the code shows and how it is
+// built. Client names, logos, screenshots and website addresses are withheld,
+// and no results or user numbers are claimed: measured results are published
+// only with the client's permission. Every feature below is evidenced by a file
+// in the project's repository. `draft: true` keeps a case study off the site
+// until the owner has confirmed STS's exact role.
+export const caseStudies = [
+  {
+    slug: "university-student-portal",
+    title: "A student management portal for a university",
+    sector: "Education",
+    intro:
+      "One system for student records, exams and certificates, with an admin back office, a student portal for results and hall tickets, and study-centre logins.",
+    services: ["web-applications", "custom-software"],
+    overview:
+      "A web portal that brings a university's student records, examinations and certificates into one system. Staff work in an admin back office, students sign in to their own portal, and study centres handle exams and results for their students. The system has been extended in stages since its first version.",
+    features: [
+      "Student registration, review and enrolment, with re-registration for later terms",
+      "Course, stream and subject management, with question management",
+      "Exam forms, hall tickets and re-exam handling, for students and for study centres",
+      "Result entry and printing, including CBCS and NEP result layouts",
+      "Certificates such as transcripts, final, provisional, migration, bonafide and consolidated, with QR codes and barcodes",
+      "Student ID cards with barcode and QR printing",
+      "Fees and transactions, courier tracking, library content, news and notifications",
+      "PhD records, including notifications and provisional and degree certificates",
+      "A student portal for the profile, hall ticket, ID card and results",
+      "Role-based access, so each admin or study centre sees only the modules their role allows, with a restricted role for result-only centres",
+    ],
+    stack: ["PHP", "Laravel 9", "Laravel Sanctum and Passport", "Blade", "jQuery and Bootstrap", "DataTables", "QR and barcode libraries"],
+    quality:
+      "Provisional certificates are numbered by a dedicated serial-number service, and student lookups are backed by database indexes.",
+  },
+  {
+    slug: "consulting-mentoring-marketplace",
+    title: "A mentoring marketplace for business consulting",
+    sector: "Business consulting",
+    intro:
+      "A platform where business owners find and pay mentors, with separate mentor and mentee portals, an admin panel, online payments and an AI-assisted advisor.",
+    services: ["web-applications", "ai-automation"],
+    overview:
+      "A web platform that connects business owners with mentors and consultants in India. Mentors and business owners each register and sign in to their own portal, and an admin team runs the marketplace behind them: people, payments, projects, articles and campaigns.",
+    features: [
+      "Separate registration and sign-in for mentors and for business owners, with password reset",
+      "Mentor profiles and a search for business owners, with a wishlist of mentors",
+      "A two-step mentor sign-up, mentor articles, and a view of each person's own transactions",
+      "Projects that mentors can apply to, with status changes handled by the admin team",
+      "A business assessment and fee calculator whose result is emailed to the person who filled it in",
+      "An AI-assisted advisor chat and expert validation that suggests a matching mentor",
+      "Online checkout with Razorpay: the price is worked out on the server and the payment is confirmed by the payment provider",
+      "An admin panel for mentors, business owners, transactions, articles, campaigns, projects and survey submissions, with exports",
+    ],
+    stack: ["PHP", "Laravel 10", "Laravel Sanctum", "Razorpay", "DataTables", "AdminLTE", "PHPUnit"],
+    quality:
+      "Automated tests cover the advisor chat, expert validation, survey submissions and the fee calculator.",
+  },
+  {
+    slug: "shipping-company-website-cms",
+    title: "A route and schedule search website for a shipping company",
+    sector: "Shipping and logistics",
+    intro:
+      "A website where visitors search sailing routes and point-to-point schedules and ask for rates, with a CMS and a role-based admin panel for the staff.",
+    services: ["web-applications", "website-development"],
+    overview:
+      "A public website and content manager for a shipping company. Visitors search routes and point-to-point schedules and send rate requests, while staff manage the content, the shipping data and the requests from a role-based admin panel.",
+    features: [
+      "Route search and point-to-point schedule search, including transshipment rules",
+      "A rate request form that emails the team and is handled in the admin panel",
+      "Shipping data managed by staff: routes, agents, voyages and schedules, and charges",
+      "Content modules for banners, sliders, galleries, team, articles, menus and services",
+      "Per-port visibility settings and a promotional panel managed in the admin",
+      "Role-based permissions, admin accounts, an idle timeout and an activity log",
+      "Cookie consent records",
+    ],
+    stack: ["PHP", "Laravel 11", "Blade", "Vite and SCSS", "Excel export", "HTML Purifier", "PHPUnit"],
+    quality:
+      "Security measures include a content security policy, security headers, hardened file uploads and HTML sanitising, with automated tests for access control, permissions, uploads and search limits.",
+  },
+  {
+    slug: "wellness-booking-system",
+    title: "An online booking system for a wellness business",
+    sector: "Health and wellness",
+    intro:
+      "Customers book sessions online, therapists run their day from their own portal, and the admin team manages bookings, services, schedules and reminders.",
+    services: ["web-applications", "custom-software"],
+    overview:
+      "An online booking system for a wellness business. Customers choose a service and a time on the website, therapists see and run their day in their own portal, and the admin team manages bookings, services and practitioners.",
+    features: [
+      "A booking flow for service, session length and place, ending in a confirmation page",
+      "An availability engine: working hours, minus leave, existing bookings with a rest gap, and events already in Google Calendar",
+      "In-person, online and at-home sessions, with a map to pick the address for home visits",
+      "Customers view or cancel their bookings from a signed link sent by email",
+      "A therapist portal to see the day, start and end sessions, mark absence and set time off",
+      "An admin panel with a dashboard, calendar, schedule overview, services and practitioners",
+      "Google Calendar sync, with email notifications and scheduled reminders to customer, therapist and admin",
+      "Booking status rules with an audit log, and automatic clean-up of past bookings",
+    ],
+    stack: ["PHP", "Laravel 12", "MySQL", "Tailwind CSS", "Vite", "Google Calendar API", "Leaflet and OpenStreetMap", "PHPUnit"],
+    quality:
+      "Login is role-based (admin or therapist) with throttling, and automated tests cover booking management, notifications and customer bookings.",
+  },
+  {
+    slug: "creative-agency-website-cms",
+    title: "A website and case-study manager for a creative agency",
+    sector: "Creative agency",
+    intro:
+      "A Laravel website for a creative agency, with an admin panel where the agency team adds and edits its own case studies, images and media library.",
+    services: ["website-development", "web-applications"],
+    overview:
+      "A website for a creative agency that began as static HTML pages and now runs on Laravel. The agency team can add and edit its case studies and images from an admin panel.",
+    features: [
+      "Public pages for home, about, services, photography, videography, why choose the agency and contact",
+      "A case-study listing and a detail page for each case study",
+      "Case-study management: create, edit, reorder, draft or publish, with an SEO title and description",
+      "Hero and thumbnail images, and a multi-image gallery with alt text and ordering",
+      "A preview of a case study before it is saved",
+      "A media library to upload, edit and delete files, with file type and size limits",
+      "Admin login and a dashboard",
+    ],
+    stack: ["PHP", "Laravel 12", "Blade", "Vite", "jQuery carousels", "PHPUnit"],
+    quality: "Uploads are checked on the server for image type and size.",
+  },
+  {
+    slug: "data-centre-services-website-cms",
+    title: "A website with its own CMS for a data-centre services firm",
+    sector: "Data-centre services",
+    intro:
+      "A marketing website with a Vue front end and an admin CMS for sections, menus, banners, team members, articles and incoming contact enquiries.",
+    services: ["website-development", "web-applications"],
+    overview:
+      "A marketing website for a data-centre services company. A Vue front end shows the content, and an admin CMS lets the team manage sections, menus, banners, team members and articles, and read contact enquiries.",
+    features: [
+      "A public site served from a content API, with sections, menus, banners, team members and published articles",
+      "Articles with draft or published status, a publish date, a banner image and a detail page",
+      "A CMS with drag-to-sort ordering, image uploads and a rich-text editor",
+      "A contact form that stores each enquiry and emails both the team and the sender",
+      "Mail (SMTP) settings that the admin can change without a developer",
+      "A visitor log and dashboard",
+      "SEO and tracking settings (titles, descriptions, Google Analytics, Tag Manager and Facebook Pixel) editable in the admin",
+      "Admin login with a forgot-password flow",
+    ],
+    stack: ["PHP", "Laravel 12", "Vue 3", "Vue Router", "Vite", "Tailwind CSS", "TinyMCE", "PHPUnit"],
+    quality: "The rich-text editor has its own automated test.",
+  },
+  {
+    slug: "grievance-management-system",
+    title: "A complaint and grievance management system",
+    sector: "Complaint management",
+    intro:
+      "An admin application for receiving, routing, escalating and closing complaints, with departments, feedback ratings, SMS alerts, charts and reports.",
+    services: ["custom-software", "web-applications"],
+    overview:
+      "A web application for an organisation to receive, route and close complaints. Complaints go to departments, an escalation matrix and escalation reports support follow-up, and the people who complained can rate the handling. The code dates from 2020.",
+    features: [
+      "Complaint handling: view, transfer, reply, block and print, with a map view",
+      "A dashboard with charts, plus departments, roles and user levels",
+      "An escalation matrix with escalation reports",
+      "Feedback and ratings from the people who raised complaints, with average ratings by employee",
+      "Reports for pending complaints by department, closing analysis, show-cause notices and the top ten grievances, with Excel export",
+      "SMS notifications through a gateway, and scheduled jobs that close complaints automatically",
+      "Synchronisation with an external complaint platform, and a login service for a mobile app",
+    ],
+    stack: ["PHP", "Zend Framework 1", "jQuery", "Highcharts", "Apache"],
+    quality:
+      "It was built on Zend Framework 1, which no longer receives updates. Before extending it today, we would first move it to a supported framework.",
+  },
+  {
+    slug: "uae-electronics-online-store",
+    draft: true,
+    title: "An online electronics store built on WooCommerce",
+    sector: "E-commerce",
+    intro:
+      "A WooCommerce store for an electronics retailer in the UAE, with card payments, shipping rates, warranty claims and a multilingual front end.",
+    services: ["wordpress", "website-development"],
+    overview:
+      "A WooCommerce online store for an electronics retailer in the UAE, running on WordPress with a commercial store theme and a child theme.",
+    features: [
+      "A WooCommerce product catalogue with a commercial store theme and a child theme",
+      "Card payments through Stripe and shipping rates through Shippo",
+      "A warranty claim flow and the UAE dirham currency symbol",
+      "SEO set-up with Yoast and a Google Merchant and Ads product feed, plus analytics",
+      "A multilingual front end, and social login",
+      "Page and object caching with WP Rocket and Redis, and image optimisation",
+    ],
+    stack: ["WordPress", "WooCommerce", "WoodMart child theme", "Stripe", "Shippo", "Yoast SEO", "WP Rocket", "Redis"],
+    quality: "",
+  },
+];
+export const publishedCaseStudies = caseStudies.filter((c) => !c.draft);

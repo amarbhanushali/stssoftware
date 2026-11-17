@@ -1,4 +1,4 @@
-import { services, projects, articles, faqs } from "./data.js";
+import { services, projects, articles, faqs, publishedCaseStudies } from "./data.js";
 export const company = {
   name: "Samarth Tech Software",
   locality: "Nashik",
@@ -73,6 +73,13 @@ export const pages = new Map([
     ),
   ],
   [
+    "/case-studies",
+    page(
+      "Case Studies – Software We Have Built",
+      "Anonymised case studies from real projects: a university portal, a booking system, a shipping website and more, described by what they do and how they are built.",
+    ),
+  ],
+  [
     "/insights",
     page(
       "Guides for Business Owners – Software & AI",
@@ -118,6 +125,11 @@ export const pages = new Map([
       description: `Example: ${p.challenge}`,
     },
   ]),
+  // Drafts are left out, so they get no page, no sitemap entry and no mention.
+  ...publishedCaseStudies.map((c) => [
+    `/case-studies/${c.slug}`,
+    { title: c.title, description: c.intro },
+  ]),
   ...articles.map((a) => [
     `/insights/${a.slug}`,
     { title: a.title, description: a.intro },
@@ -136,6 +148,7 @@ export function getMetadata(pathname) {
 const sections = {
   services: "Our Services",
   work: "Solution Examples",
+  "case-studies": "Case Studies",
   insights: "Insights",
 };
 
@@ -295,6 +308,9 @@ export function getLlmsText(origin) {
     ...["/about", "/process", "/technology", "/contact"].map((p) =>
       link(p, getMetadata(p).title, getMetadata(p).description),
     ),
+    "",
+    "## Case studies (real projects, client details withheld)",
+    ...publishedCaseStudies.map((c) => link(`/case-studies/${c.slug}`, c.title, c.intro)),
     "",
     "## Solution examples (illustrative)",
     ...projects.map((p) => link(`/work/${p.slug}`, p.title, p.challenge)),

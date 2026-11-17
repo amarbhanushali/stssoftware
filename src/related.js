@@ -1,4 +1,4 @@
-import { articles, projects } from "./data.js";
+import { articles, projects, publishedCaseStudies } from "./data.js";
 
 // Internal linking helpers. Every page should be reachable from several other
 // pages Google already visits, so new guides and examples are found quickly.
@@ -29,3 +29,19 @@ export const guidesForProject = (project, count = 3) =>
 // Illustrative solution examples that belong to a service.
 export const examplesForService = (slug) =>
   projects.filter((project) => project.services.includes(slug));
+
+// Published case studies that belong to a service.
+export const caseStudiesForService = (slug) =>
+  publishedCaseStudies.filter((study) => study.services.includes(slug));
+
+// Other case studies for the end of a case study: those sharing the most
+// services first, then the order they are listed in.
+export function relatedCaseStudies(study, count = 3) {
+  const score = (other) => other.services.filter((s) => study.services.includes(s)).length;
+  return publishedCaseStudies
+    .filter((other) => other.slug !== study.slug)
+    .map((other, index) => ({ other, index, points: score(other) }))
+    .sort((a, b) => b.points - a.points || a.index - b.index)
+    .slice(0, count)
+    .map(({ other }) => other);
+}

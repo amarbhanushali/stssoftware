@@ -9,9 +9,15 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { services, stages, projects, articles, faqs } from "./data.js";
+import { services, stages, projects, articles, faqs, publishedCaseStudies } from "./data.js";
 import { agentTools, runAgentTool } from "./agentTools.js";
-import { examplesForService, guidesForProject, relatedArticles } from "./related.js";
+import {
+  caseStudiesForService,
+  examplesForService,
+  guidesForProject,
+  relatedArticles,
+  relatedCaseStudies,
+} from "./related.js";
 import { emptyBoot, parseConsent, saveConsent } from "./boot.js";
 import { company, getMetadata } from "./metadata.js";
 
@@ -260,6 +266,7 @@ function Footer() {
             ["/about", "About us"],
             ["/process", "Our process"],
             ["/technology", "Technology stack"],
+            ["/case-studies", "Case studies"],
             ["/work", "Solution examples"],
             ["/insights", "Insights"],
             ["/contact", "Contact"],
@@ -750,6 +757,7 @@ function ServiceDetail() {
   if (!s) return <NotFound />;
   const guides = articles.filter((a) => a.services.includes(s.slug));
   const examples = examplesForService(s.slug);
+  const caseStudies = caseStudiesForService(s.slug).slice(0, 3);
   return (
     <>
       <Hero
@@ -824,8 +832,32 @@ function ServiceDetail() {
           </div>
         </section>
       )}
-      {examples.length > 0 && (
+      {caseStudies.length > 0 && (
         <section className="section white">
+          <div className="container narrow">
+            <SectionHeading
+              eyebrow="CASE STUDIES"
+              title="Projects we have built"
+              description="Real projects, with client details withheld."
+            />
+            <ul className="related-links">
+              {caseStudies.map((c) => (
+                <li key={c.slug}>
+                  <Link to={`/case-studies/${c.slug}`}>{c.title}</Link>
+                  <span>{c.intro}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="center-action">
+              <Link className="text-link" to="/case-studies">
+                All case studies <Icon />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+      {examples.length > 0 && (
+        <section className={`section${caseStudies.length ? "" : " white"}`}>
           <div className="container narrow">
             <SectionHeading
               eyebrow="ILLUSTRATIVE EXAMPLES"
@@ -1151,6 +1183,112 @@ function About() {
     </>
   );
 }
+function CaseStudyCard({ c }) {
+  return (
+    <article className="card article-card">
+      <div className="article-content">
+        <div className="article-meta">
+          <Tag>{c.sector}</Tag>
+        </div>
+        <h3>
+          <Link to={`/case-studies/${c.slug}`}>{c.title}</Link>
+        </h3>
+        <p>{c.intro}</p>
+        <div className="tags">
+          {c.stack.slice(0, 3).map((t) => (
+            <Tag key={t}>{t}</Tag>
+          ))}
+        </div>
+        <Link className="text-link" to={`/case-studies/${c.slug}`}>
+          Read case study<span className="sr-only">: {c.title}</span> <Icon />
+        </Link>
+      </div>
+    </article>
+  );
+}
+function CaseStudies() {
+  return (
+    <>
+      <Hero
+        eyebrow="Case Studies"
+        title="Software we have built"
+        description="Real projects, described by what they do and how they are built. Client names are withheld, and we claim no results or user numbers, because we publish measured results only with the client's permission."
+      />
+      <section className="section">
+        <div className="container">
+          <div className="grid three">
+            {publishedCaseStudies.map((c) => (
+              <CaseStudyCard key={c.slug} c={c} />
+            ))}
+          </div>
+        </div>
+      </section>
+      <CTA />
+    </>
+  );
+}
+function CaseStudyDetail() {
+  const { slug } = useParams();
+  const c = publishedCaseStudies.find((x) => x.slug === slug);
+  if (!c) return <NotFound />;
+  return (
+    <>
+      <Hero
+        eyebrow="Case Study"
+        title={c.title}
+        description={`${c.sector} · Client details withheld.`}
+      />
+      <section className="section">
+        <div className="container narrow">
+          <h2>What it is</h2>
+          <p className="lead">{c.overview}</p>
+          <h2>What we built</h2>
+          <ul className="check-list">
+            {c.features.map((f) => (
+              <li key={f}>
+                <Icon name="check" />
+                {f}
+              </li>
+            ))}
+          </ul>
+          <h2>How it is built</h2>
+          <div className="tags">
+            {c.stack.map((t) => (
+              <Tag key={t}>{t}</Tag>
+            ))}
+          </div>
+          {c.quality && (
+            <>
+              <h2>Worth knowing</h2>
+              <p>{c.quality}</p>
+            </>
+          )}
+          <h2>What we do not claim</h2>
+          <p>
+            Client names, logos and screenshots are withheld. We do not state
+            results or user numbers, because we publish measured results only
+            with the client's permission.
+          </p>
+          <h2>More case studies</h2>
+          <ul className="related-links">
+            {relatedCaseStudies(c).map((other) => (
+              <li key={other.slug}>
+                <Link to={`/case-studies/${other.slug}`}>{other.title}</Link>
+                <span>{other.intro}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="hero-actions">
+            <Button>Discuss a Similar Project</Button>
+            <Button to="/case-studies" outline>
+              All Case Studies
+            </Button>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
 function Work() {
   const [filter, setFilter] = useState("All Solutions");
   const list = projects.filter(
@@ -1162,7 +1300,13 @@ function Work() {
         eyebrow="Our Work"
         title="Examples of problems we can solve"
         description="Illustrative examples based on common business problems, showing how we would approach them. They are not client case studies or measured results."
-      />
+      >
+        <div className="hero-actions">
+          <Button to="/case-studies" outline>
+            See Real Case Studies
+          </Button>
+        </div>
+      </Hero>
       <section className="section">
         <div className="container">
           <Filters
@@ -2441,6 +2585,8 @@ export default function App({ boot = emptyBoot }) {
           <Route path="/about" element={<About />} />
           <Route path="/process" element={<Process />} />
           <Route path="/technology" element={<Technology />} />
+          <Route path="/case-studies" element={<CaseStudies />} />
+          <Route path="/case-studies/:slug" element={<CaseStudyDetail />} />
           <Route path="/work" element={<Work />} />
           <Route path="/work/:slug" element={<WorkDetail />} />
           <Route path="/insights" element={<Insights />} />

@@ -1283,3 +1283,81 @@ test("guide cards have distinct accessible names", async () => {
   assert.ok(cards.length >= 3, "the home page lists guides with named links");
   assert.equal(new Set(cards.map((c) => c[2])).size, cards.length);
 });
+
+// Client and brand names found in the source repositories. None of them may appear on the
+// public site: case studies are anonymised, and naming a client needs that client's approval.
+const withheldNames = /arunodaya|faroce|nourayni|vanguard|urrza|silmar|caerus|engage ?stores|engagestores|swachh|\bnmc\b|\bmgl\b|snptech|amarbhanushali/i;
+
+test("case studies are complete, anonymised, and the draft stays out of the data used by the site", async () => {
+  const { caseStudies, publishedCaseStudies, services } = await import("../src/data.js");
+  const serviceSlugs = new Set(services.map((s) => s.slug));
+  assert.equal(new Set(caseStudies.map((c) => c.slug)).size, caseStudies.length, "unique slugs");
+  for (const c of caseStudies) {
+    assert.match(c.slug, /^[a-z0-9]+(-[a-z0-9]+)*$/, c.slug);
+    assert.ok(c.title.length <= 60, `${c.slug}: title is ${c.title.length} characters`);
+    // The intro is also the page's meta description: the project rules ask for 140-160 characters.
+    assert.ok(c.intro.length >= 140 && c.intro.length <= 160, `${c.slug}: intro is ${c.intro.length} characters`);
+    assert.ok(c.features.length >= 5 && c.stack.length >= 3, c.slug);
+    assert.ok(c.services.length >= 1 && c.services.every((s) => serviceSlugs.has(s)), `${c.slug}: services`);
+    const text = [c.title, c.sector, c.intro, c.overview, c.quality, ...c.features, ...c.stack].join(" ");
+    assert.doesNotMatch(text, withheldNames, `${c.slug} names a client`);
+    // No invented results: these are the words an unproven claim would use.
+    assert.doesNotMatch(text, /\b\d+\s?%|\b\d[\d,]*\+? (users|students|customers|clients)\b|increased|reduced|saved (time|hours|days|money|costs?|\d)|doubled|guarantee/i, `${c.slug} states a result`);
+  }
+  assert.deepEqual(caseStudies.filter((c) => c.draft).map((c) => c.slug), ["uae-electronics-online-store"]);
+  assert.equal(publishedCaseStudies.length, caseStudies.length - 1);
+});
+
+test("case study pages are published, labelled and linked; the draft does not exist anywhere", async () => {
+  const { publishedCaseStudies } = await import("../src/data.js");
+  const index = await (await fetch(base + "/case-studies")).text();
+  assert.match(index, /<h1>Software we have built<\/h1>/);
+  assert.match(index, /Client names are withheld/);
+  assert.doesNotMatch(index, withheldNames);
+  const sitemap = await (await fetch(base + "/sitemap.xml")).text();
+  const llms = await (await fetch(base + "/llms.txt")).text();
+  assert.match(llms, /## Case studies \(real projects, client details withheld\)/);
+  assert.match(sitemap, /\/case-studies<\/loc><lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/);
+  for (const c of publishedCaseStudies) {
+    assert.ok(index.includes(`href="/case-studies/${c.slug}"`), `${c.slug} is listed`);
+    assert.ok(sitemap.includes(`/case-studies/${c.slug}</loc>`), `${c.slug} is in the sitemap`);
+    assert.ok(llms.includes(`/case-studies/${c.slug}`), `${c.slug} is in llms.txt`);
+    const res = await fetch(`${base}/case-studies/${c.slug}`);
+    assert.equal(res.status, 200, c.slug);
+    const html = (await res.text()).replace(/<!-- -->/g, "");
+    assert.equal((html.match(/<h1>/g) || []).length, 1, `${c.slug}: one h1`);
+    assert.match(html, /Client details withheld/);
+    assert.match(html, /What we do not claim/);
+    assert.match(html, /<h2>More case studies<\/h2>/);
+    assert.doesNotMatch(html, withheldNames, `${c.slug} page names a client`);
+    assert.match(html, new RegExp(`<title>${c.title.replace(/[()&]/g, ".")}`));
+  }
+  // The draft: no page, no sitemap entry, no mention in llms.txt or on the index.
+  const draft = await fetch(`${base}/case-studies/uae-electronics-online-store`);
+  assert.equal(draft.status, 404);
+  assert.match(await draft.text(), /noindex/);
+  for (const text of [index, sitemap, llms]) assert.doesNotMatch(text, /uae-electronics-online-store|online electronics store/i);
+});
+
+test("service pages and the Work page lead to the case studies", async () => {
+  const webApps = (await (await fetch(base + "/services/web-applications")).text()).replace(/<!-- -->/g, "");
+  assert.match(webApps, /CASE STUDIES/);
+  assert.match(webApps, /Projects we have built/);
+  const linked = new Set([...webApps.matchAll(/href="\/case-studies\/([a-z0-9-]+)"/g)].map((m) => m[1]));
+  assert.ok(linked.size >= 1 && linked.size <= 3, `service page links ${linked.size} case studies`);
+  assert.match(webApps, /href="\/case-studies"[^>]*>All case studies/);
+  // WordPress has only the hidden draft, so no empty block appears.
+  assert.doesNotMatch(await (await fetch(base + "/services/wordpress")).text(), /Projects we have built/);
+  const work = await (await fetch(base + "/work")).text();
+  assert.match(work, /href="\/case-studies"[^>]*>See Real Case Studies/);
+  assert.match(work, /not client case studies/, "the illustrative examples keep their disclaimer");
+  const home = await (await fetch(base + "/")).text();
+  assert.match(home, /href="\/case-studies"[^>]*>Case studies/, "linked from the footer on every page");
+});
+
+test("a single last card in a three-column grid stays left-aligned", async () => {
+  const css = readFileSync("src/styles.css", "utf8");
+  // No rule may move a lone last card into the middle column.
+  assert.doesNotMatch(css, /\.three[^{]*:last-child[^{]*\{[^}]*grid-column:\s*2/);
+  assert.doesNotMatch(css, /:last-child:nth-child\(3n \+ 1\)/);
+});
