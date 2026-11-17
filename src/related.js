@@ -4,11 +4,14 @@ import { articles, projects } from "./data.js";
 // pages Google already visits, so new guides and examples are found quickly.
 
 // Other guides for the end of an article: most shared services first, then the
-// same category, then the newest (the articles list is newest first).
+// same category, then a guide that covers this guide's main service (the first
+// one listed) before one that only shares a minor service, then the newest (the
+// articles list is newest first).
 export function relatedArticles(article, count = 3) {
   const score = (other) =>
     other.services.filter((s) => article.services.includes(s)).length * 2 +
-    (other.category === article.category ? 1 : 0);
+    (other.category === article.category ? 1 : 0) +
+    (other.services.includes(article.services[0]) ? 1 : 0);
   return articles
     .filter((other) => other.slug !== article.slug)
     .map((other, index) => ({ other, index, points: score(other) }))

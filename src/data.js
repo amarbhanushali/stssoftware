@@ -354,6 +354,80 @@ export const projects = [
 ];
 export const articles = [
   {
+    slug: "online-store-shopify-woocommerce-or-custom",
+    published: "2026-11-17",
+    updated: "2026-11-17",
+    category: "Web Development",
+    services: ["wordpress", "custom-software"],
+    title: "Shopify, WooCommerce or a custom store: which to choose?",
+    intro:
+      "For most small online sellers a ready platform is the right start. Build custom only when your selling process cannot fit one.",
+    minutes: 2,
+    sections: [
+      [
+        "Which option fits most small online sellers?",
+        "If you sell products with normal prices, stock counts and delivery, a ready platform is usually the sensible start. Shopify is a hosted service you rent monthly, so setup is quick and updates are handled for you. WooCommerce is a free plugin for WordPress that you host and look after yourself, which gives more control and more upkeep. Both can take UPI and card payments through gateways that support them. Custom development starts only when neither one fits how you sell.",
+      ],
+      [
+        "What you pay for besides the platform",
+        "A ready platform looks cheap until you add the extras. List the payment gateway fee on each sale, paid apps or plugins you will need, hosting if you run WooCommerce, the theme, and who will install updates. Ask every provider for these costs in writing before you compare headline prices, because the cheapest start is not always the cheapest year.",
+      ],
+      [
+        "When a custom-built store makes sense",
+        "Custom makes sense when your selling does not fit a standard cart: prices that depend on the customer or the quantity, made-to-order items that need approval, stock shared with dealers or with a system such as Tally, or order rules a plugin cannot handle. The cost is higher and so is the upkeep, because you own the code. If you cannot name the rule a platform fails to handle, you probably do not need custom. We build online stores, and we will say so when a ready platform fits you better.",
+      ],
+      [
+        "The questions that decide it",
+        "How many products will you sell, and how often do they change? Must prices or stock sync from another system? Who will update products and handle orders every day? Do you need more than one language or currency? Who fixes a problem on the evening of a sale? Honest answers to these usually narrow the choice quickly.",
+      ],
+      [
+        "Moving later is possible, but plan for it",
+        "You can start on a platform and move to custom later, but your product data, customer accounts and order history have to come with you. Keep your products in a clean spreadsheet, own your domain name and your customer list, and avoid plugins or apps that lock your data in. That keeps the decision reversible.",
+      ],
+      [
+        "Test one full order before you choose",
+        "List ten real products and walk through one complete order yourself: browse, pay with UPI, receive the confirmation and invoice, then cancel and return it. Whichever option handles that journey with the fewest workarounds is the right one for now.",
+      ],
+    ],
+  },
+  {
+    slug: "online-store-launch-checklist-india",
+    published: "2026-11-17",
+    updated: "2026-11-17",
+    category: "Web Development",
+    services: ["website-development", "wordpress"],
+    title: "Online store launch checklist for Indian businesses",
+    intro:
+      "Test a real order from payment to invoice to return, and settle your delivery and refund rules before you promote the store.",
+    minutes: 2,
+    sections: [
+      [
+        "Can a customer pay and receive a confirmation?",
+        "Place a real order using UPI, a card, and cash on delivery if you offer it. Check that the payment gateway confirms the payment, that the order appears in your admin, and that the customer receives a message with the order number. Also test a failed payment and a closed payment window, because that is where orders get lost.",
+      ],
+      [
+        "Are invoices and tax details correct?",
+        "If you are registered for GST, the invoice should carry the details your accountant expects, such as your GSTIN and the tax shown separately. Ask your accountant to review one sample invoice before launch. Do not guess, because the rules depend on what you sell and where you ship it.",
+      ],
+      [
+        "Is delivery priced and promised honestly?",
+        "Decide your delivery charges, the areas you serve and the delivery time you can actually keep, then show them on the product page and not only at checkout. If you use a courier service, place a test order and follow it to the door. Surprise delivery costs at the last step are a common reason customers leave.",
+      ],
+      [
+        "Are returns, refunds and cancellations written down?",
+        "Write a short policy: what can be returned, within how many days, who pays for return delivery, and how long a refund takes. Link it from the footer and from checkout. Then test it once yourself, so you know who in your team does what when a real request arrives.",
+      ],
+      [
+        "Do product pages answer the buyer questions?",
+        "Each page needs clear photos from several angles, size or specification details, the real price including tax, whether the item is in stock, and a delivery estimate. Read five pages on your phone, because that is where many visitors will see them. If a page leaves you with a question, it will leave the customer with one too.",
+      ],
+      [
+        "Who answers the first customer message?",
+        "Decide before launch who replies on phone, email and WhatsApp, how fast, and what they are allowed to promise. Put one way to reach you on every page. Quick, clear answers build trust in a new store, so agree on this before the first order, not after.",
+      ],
+    ],
+  },
+  {
     slug: "website-maintenance-amc-plan",
     published: "2026-11-17",
     updated: "2026-11-17",
