@@ -772,3 +772,157 @@ test("a verification file name in GOOGLE_SITE_VERIFICATION is not published as a
   assert.equal(file2.status, 200);
   assert.equal((await file2.text()).trim(), "google-site-verification: google7a9acf876277da7e.html");
 });
+
+test("robots.txt declares content signals in every crawler group", async () => {
+  const robots = await (await fetch(base + "/robots.txt")).text();
+  const groups = robots.split("\n\n").filter((g) => g.startsWith("User-agent:"));
+  assert.ok(groups.length >= 10);
+  for (const group of groups)
+    assert.match(group, /\nContent-Signal: search=yes, ai-input=yes, ai-train=no(\n|$)/, group.split("\n")[0]);
+});
+
+test("sitemap has real lastmod dates and every article is dated", async () => {
+  const { articles } = await import("../src/data.js");
+  const { siteUpdated, getLastModified } = await import("../src/metadata.js");
+  const xml = await (await fetch(base + "/sitemap.xml")).text();
+  const urls = xml.match(/<url>.*?<\/url>/g);
+  assert.ok(urls.length > 20);
+  for (const url of urls) assert.match(url, /<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/, url);
+  for (const a of articles) {
+    assert.match(a.published, /^\d{4}-\d{2}-\d{2}$/, a.slug);
+    assert.ok(a.updated >= a.published, `${a.slug} updated is before published`);
+    assert.ok(xml.includes(`/insights/${a.slug}</loc><lastmod>${a.updated}</lastmod>`), a.slug);
+  }
+  // Update siteUpdated in src/metadata.js whenever you add or edit an article.
+  const newest = articles.map((a) => a.updated).sort().at(-1);
+  assert.ok(siteUpdated >= newest, "siteUpdated is older than the newest article");
+  assert.equal(getLastModified("/insights"), newest);
+});
+
+test("articles show their dates and publish them in structured data", async () => {
+  const { articles } = await import("../src/data.js");
+  const a = articles.find((x) => x.updated !== x.published) || articles[0];
+  const html = await (await fetch(`${base}/insights/${a.slug}`)).text();
+  assert.match(html, new RegExp(`<time dateTime="${a.published}">`));
+  assert.match(html, new RegExp(`<time dateTime="${a.updated}">`));
+  const graph = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1])["@graph"];
+  const post = graph.find((node) => node["@type"] === "BlogPosting");
+  assert.equal(post.datePublished, a.published);
+  assert.equal(post.dateModified, a.updated);
+});
+
+test("pages advertise llms.txt and the sitemap in a Link header", async () => {
+  for (const route of ["/", "/services", "/insights/replace-spreadsheets"]) {
+    const r = await fetch(base + route);
+    const link = r.headers.get("link");
+    assert.match(link, /<\/llms\.txt>; rel="describedby"; type="text\/markdown"/, route);
+    assert.match(link, /<\/sitemap\.xml>; rel="sitemap"/, route);
+    assert.match(r.headers.get("vary"), /Accept/i, route);
+  }
+});
+
+test("agents that ask for Markdown get Markdown, browsers still get HTML", async () => {
+  const md = await fetch(base + "/services/ai-automation", { headers: { Accept: "text/markdown" } });
+  assert.equal(md.status, 200);
+  assert.match(md.headers.get("content-type"), /^text\/markdown/);
+  assert.match(md.headers.get("vary"), /Accept/i);
+  assert.ok(Number(md.headers.get("x-markdown-tokens")) > 50);
+  const text = await md.text();
+  assert.match(text, /^# /m);
+  assert.match(text, /\[[^\]]+\]\(http:\/\/localhost:3001\/[^)]*\)/, "relative links become absolute");
+  assert.match(text, /Source: http:\/\/localhost:3001\/services\/ai-automation/);
+  assert.doesNotMatch(text, /<[a-z]+[ >]|<\/|<script|window\.|aria-hidden/i, "no HTML left over");
+  const html = await (await fetch(base + "/services/ai-automation")).text();
+  assert.ok(text.length < html.length / 2, "Markdown is much smaller than HTML");
+  const browser = await fetch(base + "/", { headers: { Accept: "text/html,application/xhtml+xml,*/*;q=0.8" } });
+  assert.match(browser.headers.get("content-type"), /^text\/html/);
+  const preferHtml = await fetch(base + "/", { headers: { Accept: "text/markdown;q=0.1, text/html" } });
+  assert.match(preferHtml.headers.get("content-type"), /^text\/html/);
+  const missing = await fetch(base + "/no-such-page", { headers: { Accept: "text/markdown" } });
+  assert.equal(missing.status, 404);
+  assert.match(missing.headers.get("content-type"), /^text\/markdown/);
+});
+
+test("the Markdown converter drops decorative, script and form content", async () => {
+  const { htmlToMarkdown } = await import("../server/markdown.mjs");
+  const md = htmlToMarkdown(
+    '<main><div aria-hidden="true">decor</div><h2>Title &amp; more</h2><p>Hi <strong>bold</strong> <strong><svg></svg></strong><a href="/x">link</a> <a href="javascript:alert(1)">bad</a>.</p><ul><li>one</li><li>two</li></ul><form><input name="website"> secret</form><script>evil()</script></main>',
+    "https://e.com",
+  );
+  assert.equal(md, "## Title & more\n\nHi **bold** [link](https://e.com/x) bad.\n\n- one\n- two");
+});
+
+async function mcp(body, headers = {}) {
+  return fetch(`${base}/mcp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...headers },
+    body: typeof body === "string" ? body : JSON.stringify(body),
+  });
+}
+test("the read-only MCP endpoint lists and runs public tools", async () => {
+  const init = await (await mcp({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18" } })).json();
+  assert.equal(init.result.protocolVersion, "2025-06-18");
+  assert.deepEqual(init.result.capabilities, { tools: { listChanged: false } });
+  assert.equal((await mcp({ jsonrpc: "2.0", method: "notifications/initialized" })).status, 202);
+  const old = await (await mcp({ jsonrpc: "2.0", id: 2, method: "initialize", params: { protocolVersion: "1999-01-01" } })).json();
+  assert.equal(old.result.protocolVersion, "2025-06-18");
+
+  const list = await (await mcp({ jsonrpc: "2.0", id: 3, method: "tools/list" })).json();
+  const names = list.result.tools.map((t) => t.name);
+  assert.deepEqual(names, ["get_company_info", "list_services", "get_service", "list_guides", "get_faqs"]);
+  for (const tool of list.result.tools) {
+    assert.equal(tool.inputSchema.type, "object", tool.name);
+    assert.equal(tool.annotations.readOnlyHint, true, tool.name);
+  }
+  const call = async (name, args) =>
+    (await (await mcp({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name, arguments: args } })).json()).result;
+  const info = await call("get_company_info", {});
+  assert.equal(info.isError, false);
+  const company = JSON.parse(info.content[0].text);
+  assert.equal(company.phone, "+919922792566");
+  assert.match(company.howToEnquire, /cannot send an enquiry/);
+  const service = JSON.parse((await call("get_service", { slug: "ai-automation" })).content[0].text);
+  assert.equal(service.url, "http://localhost:3001/services/ai-automation");
+  const bad = await call("get_service", { slug: "../../etc/passwd" });
+  assert.equal(bad.isError, true);
+  assert.match(bad.content[0].text, /Unknown service/);
+  assert.equal((await call("list_guides", {})).isError, false);
+
+  const unknown = await (await mcp({ jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "list_enquiries" } })).json();
+  assert.equal(unknown.error.code, -32602);
+  const nomethod = await (await mcp({ jsonrpc: "2.0", id: 6, method: "resources/list" })).json();
+  assert.equal(nomethod.error.code, -32601);
+  assert.equal((await mcp("[1,2]")).status, 400);
+  assert.equal((await mcp({ jsonrpc: "1.0", id: 1, method: "ping" })).status, 400);
+});
+
+test("the MCP endpoint refuses other sites, wrong types and GET", async () => {
+  const ping = { jsonrpc: "2.0", id: 1, method: "ping" };
+  assert.equal((await mcp(ping, { Origin: "https://evil.example" })).status, 403);
+  assert.equal((await mcp(ping, { Origin: "http://localhost:3001" })).status, 200);
+  const plain = await fetch(`${base}/mcp`, { method: "POST", headers: { "Content-Type": "text/plain" }, body: "x" });
+  assert.equal(plain.status, 415);
+  const get = await fetch(`${base}/mcp`);
+  assert.equal(get.status, 405);
+  assert.equal(get.headers.get("allow"), "POST");
+  // Nothing from the enquiry database is reachable through MCP.
+  const all = JSON.stringify(await (await mcp({ jsonrpc: "2.0", id: 1, method: "tools/list" })).json());
+  assert.doesNotMatch(all, /list_enquiries|submit|send_/i);
+});
+
+test("the MCP server card describes the real endpoint", async () => {
+  const r = await fetch(`${base}/.well-known/mcp/server-card.json`);
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get("content-type"), /application\/json/);
+  const card = await r.json();
+  assert.equal(card.serverInfo.name, "stssoftware-website");
+  assert.match(card.serverInfo.version, /^\d+\.\d+\.\d+$/);
+  assert.equal(card.endpoint, "http://localhost:3001/mcp");
+  assert.equal(card.transport.endpoint, card.endpoint);
+  assert.equal(card.transport.type, "streamable-http");
+  assert.deepEqual(card.capabilities, { tools: { listChanged: false } });
+  assert.equal(card.authentication.required, false);
+  // The card must match what the endpoint really serves.
+  const list = await (await mcp({ jsonrpc: "2.0", id: 1, method: "tools/list" })).json();
+  assert.deepEqual(card.tools.map((t) => t.name), list.result.tools.map((t) => t.name));
+});

@@ -31,6 +31,7 @@ import {
   getMetadata,
   getStructuredData,
   getLlmsText,
+  getLastModified,
   hubspotTracking,
 } from "../src/metadata.js";
 import { teamEmail, visitorEmail } from "./email.mjs";
@@ -44,6 +45,8 @@ import {
 } from "./hubspot.mjs";
 import { createFollowUps } from "./followup.mjs";
 import { googleVerification } from "./verification.mjs";
+import { handleMcp, serverCard } from "./mcp.mjs";
+import { htmlToMarkdown } from "./markdown.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = process.env.DATA_DIR || path.join(root, "server", "data");
@@ -541,6 +544,41 @@ app.post("/api/enquiries", limiter, async (req, res) => {
 app.use("/api", (_req, res) =>
   res.status(404).json({ error: "API endpoint not found." }),
 );
+// Read-only MCP server for AI agents (public site content only; see
+// server/mcp.mjs). It has no state, no cookies and no access to enquiries, so
+// it needs no CSRF token or login. It has its own rate limit.
+const publicOrigin = () => process.env.PUBLIC_ORIGIN?.replace(/\/$/, "") || "";
+const mcpLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { jsonrpc: "2.0", id: null, error: { code: -32000, message: "Too many requests." } },
+});
+const mcpRefusal = (res, status, message) =>
+  res.status(status).json({ jsonrpc: "2.0", id: null, error: { code: -32600, message } });
+app.post("/mcp", mcpLimiter, (req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.set("X-Robots-Tag", "noindex, nofollow");
+  // MCP spec: refuse browser requests from other sites (DNS-rebinding guard).
+  // Non-browser agents send no Origin header.
+  const sentOrigin = req.get("Origin");
+  if (sentOrigin && sentOrigin !== (publicOrigin() || `${req.protocol}://${req.get("host")}`))
+    return mcpRefusal(res, 403, "Origin not allowed.");
+  if (!req.is("application/json"))
+    return mcpRefusal(res, 415, "Content-Type must be application/json.");
+  const result = handleMcp(req.body, publicOrigin());
+  if (!result.body) return res.status(result.status).end();
+  res.status(result.status).json(result.body);
+});
+app.all("/mcp", (_req, res) =>
+  res.set("Allow", "POST").status(405).json({ error: "Use POST with a JSON-RPC message." }),
+);
+app.get("/.well-known/mcp/server-card.json", (_req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Cache-Control", "public, max-age=3600");
+  res.json(serverCard(publicOrigin()));
+});
 const dist = path.join(root, "dist");
 if (existsSync(path.join(dist, "index.html"))) {
   const template = readFileSync(path.join(dist, "index.html"), "utf8");
@@ -576,11 +614,24 @@ if (existsSync(path.join(dist, "index.html"))) {
     "Applebot-Extended",
     "*",
   ];
+  // Content Signals (contentsignals.org): how the content may be used, beyond
+  // whether it may be crawled. Default: appear in search and in AI answers
+  // with a link back, but do not use the pages to train AI models. Change it
+  // with CONTENT_SIGNAL. The line is repeated in every group because a crawler
+  // obeys only the most specific group that names it.
+  const signalPattern = /^(search|ai-input|ai-train)=(yes|no)(, (search|ai-input|ai-train)=(yes|no)){0,2}$/;
+  const contentSignal = signalPattern.test(process.env.CONTENT_SIGNAL || "")
+    ? process.env.CONTENT_SIGNAL
+    : "search=yes, ai-input=yes, ai-train=no";
+  if (process.env.CONTENT_SIGNAL && contentSignal !== process.env.CONTENT_SIGNAL)
+    console.error(
+      'SEO: CONTENT_SIGNAL is ignored. Use for example "search=yes, ai-input=yes, ai-train=no".',
+    );
   app.get("/robots.txt", (_req, res) =>
     res
       .type("text")
       .send(
-        `${crawlers.map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /api/\n`).join("\n")}${process.env.PUBLIC_ORIGIN ? `\nSitemap: ${process.env.PUBLIC_ORIGIN}/sitemap.xml\n` : ""}`,
+        `${crawlers.map((bot) => `User-agent: ${bot}\nAllow: /\nDisallow: /api/\nContent-Signal: ${contentSignal}\n`).join("\n")}${process.env.PUBLIC_ORIGIN ? `\nSitemap: ${process.env.PUBLIC_ORIGIN}/sitemap.xml\n` : ""}`,
       ),
   );
   app.get("/llms.txt", (_req, res) => {
@@ -602,7 +653,7 @@ if (existsSync(path.join(dist, "index.html"))) {
     res
       .type("xml")
       .send(
-        `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...routes.keys()].map((p) => `<url><loc>${escape(process.env.PUBLIC_ORIGIN + p)}</loc><changefreq>${p === "/" ? "weekly" : "monthly"}</changefreq><priority>${p === "/" ? "1.0" : p.split("/").length === 2 ? "0.8" : "0.6"}</priority></url>`).join("")}</urlset>`,
+        `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${[...routes.keys()].map((p) => `<url><loc>${escape(process.env.PUBLIC_ORIGIN + p)}</loc><lastmod>${getLastModified(p)}</lastmod><changefreq>${p === "/" ? "weekly" : "monthly"}</changefreq><priority>${p === "/" ? "1.0" : p.split("/").length === 2 ? "0.8" : "0.6"}</priority></url>`).join("")}</urlset>`,
       );
   });
   app.use(
@@ -611,6 +662,25 @@ if (existsSync(path.join(dist, "index.html"))) {
   app.get("/{*splat}", (req, res) => {
     const pathname = req.path.replace(/\/$/, "") || "/";
     const found = routes.has(pathname);
+    // The same URL serves HTML to browsers and Markdown to agents that ask
+    // for it, so caches must key on Accept. The Link header points agents at
+    // the site summary and the sitemap (RFC 8288).
+    res.vary("Accept");
+    res.set(
+      "Link",
+      '</llms.txt>; rel="describedby"; type="text/markdown", </sitemap.xml>; rel="sitemap"; type="application/xml"',
+    );
+    if (req.accepts(["html", "text/markdown"]) === "text/markdown") {
+      const site = process.env.PUBLIC_ORIGIN?.replace(/\/$/, "") || "";
+      let markdown = htmlToMarkdown(render(req.originalUrl), site);
+      if (site && found) markdown += `\n\n---\nSource: ${site}${pathname}`;
+      return res
+        .status(found ? 200 : 404)
+        .type("text/markdown")
+        // Rough estimate (4 characters per token), not an exact count.
+        .set("x-markdown-tokens", String(Math.ceil(markdown.length / 4)))
+        .send(markdown);
+    }
     const metadata = getMetadata(pathname);
     const title = escape(`${metadata.title} | Samarth Tech Software`);
     let html = template

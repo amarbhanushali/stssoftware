@@ -135,6 +135,8 @@ Posts live in the `articles` array in `src/data.js`. There is no CMS and no Mark
   title: "Website or mobile app: which should your business build first?",
   intro: "For most businesses, a website that works well on a phone comes first. Build an app when customers need it every week, not once.",
   minutes: 4, // about 200 words per minute, rounded up
+  published: "2026-11-17", // real date (YYYY-MM-DD) it first went live; shown on the page, in BlogPosting and the sitemap
+  updated: "2026-11-17", // real date of the last meaningful edit; bump it when you change the text, and set it again as `siteUpdated` in src/metadata.js (a test fails if siteUpdated is older than the newest article)
   // Optional: figures: [{ after: 0, title, rows: [{ label, tone: "slow" | "fast", steps: ["…", "…"] }], caption }]
   // Step diagrams drawn in HTML/CSS (no image files), shown after section index `after`.
   sections: [

@@ -5,10 +5,12 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
   useParams,
   useSearchParams,
 } from "react-router-dom";
 import { services, stages, projects, articles, faqs } from "./data.js";
+import { agentTools, runAgentTool } from "./agentTools.js";
 import { company, getMetadata } from "./metadata.js";
 
 const paths = {
@@ -50,6 +52,13 @@ function hubspotIdentify(email) {
   if (!window.stsHubSpotLoaded || !analyticsAllowed() || !email) return;
   window._hsq.push(["identify", { email }]);
   window._hsq.push(["trackPageView"]);
+}
+// "2026-11-16" -> "16 Nov 2026", without Intl so server and browser always
+// render the same text (no time-zone or locale differences).
+const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function formatDate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${d} ${months[m - 1]} ${y}`;
 }
 // Counts taps on the phone number as a GA4 event, only after consent.
 function trackContact(method) {
@@ -1346,7 +1355,16 @@ function Article() {
       <Hero eyebrow={a.category} title={a.title} description={a.intro}>
         <div className="article-byline">
           <Icon name="clock" />
-          {a.minutes} min read <span>·</span> Samarth Tech Software team
+          {a.minutes} min read <span>·</span> Samarth Tech Software team{" "}
+          <span>·</span> Published{" "}
+          <time dateTime={a.published}>{formatDate(a.published)}</time>
+          {a.updated !== a.published && (
+            <>
+              {" "}
+              <span>·</span> Updated{" "}
+              <time dateTime={a.updated}>{formatDate(a.updated)}</time>
+            </>
+          )}
         </div>
       </Hero>
       <section className="section white">
@@ -1968,6 +1986,70 @@ function AnalyticsConsent() {
   const tools = [measurementId && "Google Analytics", hubspot && "HubSpot"].filter(Boolean).join(" and ");
   return <aside className="analytics-consent" aria-label="Analytics cookie choice"><p>We use optional {tools} cookies to understand website visits and improve our services. Declining does not affect your enquiry.</p><div><button type="button" className="text-button" onClick={() => decide("denied")}>No thanks</button><button type="button" className="button" onClick={() => decide("accepted")}>Accept analytics</button></div></aside>;
 }
+// WebMCP: offers the site's read-only tools to AI agents running in the
+// visitor's browser (Chrome's document.modelContext; older builds used
+// navigator.modelContext). Browsers without it skip this silently. There is
+// deliberately no tool that submits an enquiry: sending personal details needs
+// the visitor's own consent, so the agent can only open the contact form.
+function AgentTools() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const context = document.modelContext || navigator.modelContext;
+    if (typeof context?.registerTool !== "function") return;
+    const controller = new AbortController();
+    const reply = (data, isError = false) => ({
+      content: [{ type: "text", text: JSON.stringify(data) }],
+      isError,
+    });
+    const tools = [
+      ...agentTools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+        annotations: { readOnlyHint: true },
+        execute: async (args) => {
+          try {
+            return reply(runAgentTool(tool.name, args, window.location.origin));
+          } catch (error) {
+            return reply({ error: error.message }, true);
+          }
+        },
+      })),
+      {
+        name: "open_enquiry_form",
+        description:
+          "Open the contact form so the visitor can describe their project and send the enquiry themselves. Optionally preselect a service. This does not send anything.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            service: {
+              type: "string",
+              enum: services.map((s) => s.slug),
+              description: "Service to preselect, for example website-development.",
+            },
+          },
+          additionalProperties: false,
+        },
+        execute: async (args) => {
+          const slug = services.some((s) => s.slug === args?.service) ? args.service : "";
+          navigate(slug ? `/contact?service=${slug}` : "/contact");
+          return reply({ opened: slug ? `/contact?service=${slug}` : "/contact" });
+        },
+      },
+    ];
+    for (const tool of tools) {
+      try {
+        // registerTool may return a promise; a duplicate name (React
+        // StrictMode runs effects twice in development) is not an error here.
+        Promise.resolve(context.registerTool(tool, { signal: controller.signal })).catch(() => {});
+      } catch {
+        /* unsupported tool shape in this browser build */
+      }
+    }
+    return () => controller.abort();
+  }, [navigate]);
+  return null;
+}
 const chatGreeting =
   "Hi! I’m the Samarth Tech Software assistant. Tell me what you’d like to build or improve, and I’ll help you send the details to our team.";
 const chatTimelines = [
@@ -2279,6 +2361,7 @@ export default function App() {
       </main>
       <Footer />
       <ChatAssistant />
+      <AgentTools />
     </>
   );
 }

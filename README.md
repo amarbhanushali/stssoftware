@@ -118,6 +118,15 @@ The production site serves crawlable HTML, unique page titles and descriptions, 
 
 Service pages are titled "… in Nashik" and the structured data includes the Nashik address, served area, BreadcrumbList, FAQPage (where the FAQ is shown) and BlogPosting for guides. For AI assistants and answer engines, `robots.txt` explicitly allows Googlebot, Bingbot, GPTBot, OAI-SearchBot, ClaudeBot, PerplexityBot and similar crawlers, and `/llms.txt` serves a plain-language summary of the company, services and guides generated from `src/data.js`. Also verify the site in Bing Webmaster Tools (it feeds ChatGPT and Copilot search) and create a Google Business Profile with exactly the same name and address.
 
+**Agent readiness.** AI agents are served through standard, machine-readable routes, all generated from `src/data.js` and `src/metadata.js`:
+
+- `robots.txt` carries a `Content-Signal` line in every crawler group (default `search=yes, ai-input=yes, ai-train=no`: appear in search and AI answers, do not train models on the pages). Change it with `CONTENT_SIGNAL`; an invalid value is ignored and logged (`SEO:` line). Crawling itself is still allowed for the listed bots.
+- `sitemap.xml` has a real `<lastmod>` for every URL. Articles use their own `updated` date; every other page uses `siteUpdated` in `src/metadata.js`, which you set to the day content last changed (a test fails if it is older than the newest article). Articles show `published`/`updated` on the page and in BlogPosting.
+- A request with `Accept: text/markdown` to any page returns a Markdown version of the page (about a fifth of the size of the HTML), with `Vary: Accept`. Browsers still get HTML. Every page response also carries an RFC 8288 `Link` header pointing at `/llms.txt` and `/sitemap.xml`.
+- `POST /mcp` is a small **read-only** MCP server (Streamable HTTP, no sessions) with five tools that return public site content: company info, services, one service, guides and FAQs. It cannot read or send enquiries, refuses requests from other websites' browsers, and has its own rate limit. `/.well-known/mcp/server-card.json` describes it (the card format is still a draft; the endpoint is given in two places for compatibility).
+- In browsers that support WebMCP (`document.modelContext`, or `navigator.modelContext` in older builds) the same tools are registered on page load, plus `open_enquiry_form`, which only opens the contact form. No tool submits an enquiry: sending personal details needs the visitor's own consent.
+- The tool definitions live in one file, `src/agentTools.js`, shared by the MCP server and WebMCP, so adding a service or guide updates both.
+
 Search ranking also needs useful content and external trust. Publish real, location- and customer-specific service evidence only after it is approved: project outcomes, client permissions, accurate business contact details and answers to actual customer questions. Keep the consultation call to action on every service page and review form enquiries weekly to see which services and pages generate leads.
 
 ## Visitor tracking

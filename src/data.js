@@ -351,6 +351,8 @@ export const projects = [
 export const articles = [
   {
     slug: "ai-agents-faster-business-processes",
+    published: "2026-11-16",
+    updated: "2026-11-16",
     category: "Practical AI",
     services: ["ai-automation", "custom-software"],
     title: "How do AI agents make business processes faster?",
@@ -439,6 +441,8 @@ export const articles = [
   },
   {
     slug: "laravel-security-2026",
+    published: "2026-11-02",
+    updated: "2026-11-02",
     category: "Web Development",
     services: ["php-security", "web-applications"],
     title: "Laravel security in 2026: what should your business check?",
@@ -478,6 +482,8 @@ export const articles = [
   },
   {
     slug: "php-security-update-october-2026",
+    published: "2026-10-29",
+    updated: "2026-11-02",
     category: "Web Development",
     services: ["php-security", "wordpress"],
     title: "PHP security update, October 2026: is your server safe?",
@@ -517,6 +523,8 @@ export const articles = [
   },
   {
     slug: "scope-your-software-project",
+    published: "2026-09-08",
+    updated: "2026-11-02",
     category: "Project Planning",
     services: ["custom-software", "web-applications"],
     title: "How to plan a software project before you hire a developer",
@@ -544,6 +552,8 @@ export const articles = [
   },
   {
     slug: "practical-ai-automation",
+    published: "2026-09-08",
+    updated: "2026-11-02",
     category: "Practical AI",
     services: ["ai-automation"],
     title: "Where should a small business start with AI automation?",
@@ -571,6 +581,8 @@ export const articles = [
   },
   {
     slug: "replace-spreadsheets",
+    published: "2026-09-08",
+    updated: "2026-11-02",
     category: "Business Systems",
     services: ["custom-software", "web-applications"],
     title: "When is it time to replace your Excel sheet with software?",
@@ -598,6 +610,8 @@ export const articles = [
   },
   {
     slug: "website-launch-checklist",
+    published: "2026-09-08",
+    updated: "2026-11-02",
     category: "Web Development",
     services: ["website-development", "wordpress"],
     title: "A simple checklist before your business website goes live",
@@ -625,6 +639,8 @@ export const articles = [
   },
   {
     slug: "plan-system-integration",
+    published: "2026-09-08",
+    updated: "2026-11-02",
     category: "Business Systems",
     services: ["custom-software", "ai-automation"],
     title: "Questions to ask before connecting two business systems",
@@ -652,6 +668,8 @@ export const articles = [
   },
   {
     slug: "mobile-offline-workflows",
+    published: "2026-09-08",
+    updated: "2026-11-02",
     category: "Mobile Apps",
     services: ["mobile-applications"],
     title: "How to design a mobile app that works with poor network",

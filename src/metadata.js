@@ -21,6 +21,17 @@ export const hubspotTracking = {
   scriptHost: "js-na2.hs-scripts.com",
   portalId: "248022319",
 };
+// Sitemap <lastmod>. Articles carry their own real dates in data.js. Every other
+// page uses this date: set it to the day the site content or layout last
+// changed (a test fails if it is older than the newest article).
+export const siteUpdated = "2026-11-17";
+export function getLastModified(pathname) {
+  const dates = articles.map((a) => a.updated);
+  const article = articles.find((a) => `/insights/${a.slug}` === pathname);
+  if (article) return article.updated;
+  if (pathname === "/insights") return dates.sort().at(-1);
+  return siteUpdated;
+}
 const baseDescription =
   "Samarth Tech Software is a software company in Nashik, Maharashtra. We build websites, custom software, mobile apps and AI automation for businesses across India.";
 const page = (title, description) => ({ title, description });
@@ -258,6 +269,9 @@ export function getStructuredData(pathname, origin) {
       author: { "@id": `${origin}/#organization` },
       publisher: { "@id": `${origin}/#organization` },
       image: `${origin}/sts-whatsapp-app-icon.png`,
+      datePublished: article.published,
+      dateModified: article.updated,
+      inLanguage: "en-IN",
     });
   }
   return { "@context": "https://schema.org", "@graph": graph };
